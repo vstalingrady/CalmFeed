@@ -9,59 +9,68 @@
 <body>
   <main>
     <header class="brand">
-      <img class="brand-icon" src="icons/icon-48.png" width="36" height="36" alt="">
-      <h1>CalmFeed</h1>
+      <img class="brand-icon" src="icons/icon-48.png" width="40" height="40" alt="">
+      <div class="brand-copy">
+        <h1>CalmFeed</h1>
+        <p class="tagline">X, without the doomscroll</p>
+      </div>
     </header>
 
-    <section class="field">
+    <section class="panel field" aria-labelledby="key-label">
       <div class="label-row">
-        <label for="apiKey">Gemini API key</label>
+        <label id="key-label" for="apiKey">Gemini API key</label>
         <a
           class="help-link"
           href="https://aistudio.google.com/apikey"
           target="_blank"
           rel="noopener noreferrer"
-        >Get a free key</a>
+        >Get free key ↗</a>
       </div>
       <input
         id="apiKey"
         type="password"
         autocomplete="off"
-        placeholder="AIza..."
+        placeholder="AIza…"
         spellcheck="false"
       >
+      <details class="guide">
+        <summary>How to get a key</summary>
+        <ol>
+          <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
+          <li>Sign in with Google</li>
+          <li>Click <strong>Create API key</strong></li>
+          <li>Copy it (starts with <code>AIza</code>)</li>
+          <li>Paste above → <strong>Save</strong></li>
+        </ol>
+        <p class="guide-note">
+          Free tier is fine for personal use. Key stays in this browser.
+          CalmFeed has no servers — text goes straight to Gemini for embeddings.
+        </p>
+      </details>
     </section>
 
-    <details class="guide">
-      <summary>How to get a Gemini API key</summary>
-      <ol>
-        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
-        <li>Sign in with your Google account</li>
-        <li>Click <strong>Create API key</strong></li>
-        <li>Copy the key (starts with <code>AIza</code>)</li>
-        <li>Paste it above and hit <strong>Save</strong></li>
-      </ol>
-      <p class="guide-note">
-        Free tier is enough for personal use. The key stays in this browser only —
-        CalmFeed has no servers. Text and compressed media go straight to Google for embeddings.
-      </p>
-    </details>
+    <section class="panel settings">
+      <div class="row">
+        <div class="field">
+          <label for="minutes">Session</label>
+          <div class="input-suffix">
+            <input id="minutes" type="number" min="1" max="120" value="10">
+            <span>min</span>
+          </div>
+        </div>
 
-    <div class="row">
-      <div class="field">
-        <label for="minutes">Minutes</label>
-        <input id="minutes" type="number" min="1" max="120" value="10">
+        <div class="field">
+          <label for="sensitivity">Filter</label>
+          <div class="select-wrap">
+            <select id="sensitivity">
+              <option value="gentle">Gentle</option>
+              <option value="balanced">Balanced</option>
+              <option value="strict">Strict</option>
+            </select>
+          </div>
+        </div>
       </div>
-
-      <div class="field">
-        <label for="sensitivity">Filter</label>
-        <select id="sensitivity">
-          <option value="gentle">Gentle</option>
-          <option value="balanced">Balanced</option>
-          <option value="strict">Strict</option>
-        </select>
-      </div>
-    </div>
+    </section>
 
     <p id="status" role="status"></p>
 
@@ -71,8 +80,7 @@
     </div>
 
     <p class="fine-print">
-      Your key never leaves this browser except when calling Gemini.
-      Uninstall removes local storage.
+      Local only · no CalmFeed backend · uninstall clears storage
     </p>
   </main>
 

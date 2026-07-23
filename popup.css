@@ -1,16 +1,80 @@
+/* CalmFeed popup — editorial warm paper. Fraunces + Bricolage Grotesque. */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
-  --bg: #f4f1ea;
-  --surface: #fffcf7;
-  --ink: #1a1917;
-  --muted: #6b6560;
-  --line: #ddd6cb;
-  --line-strong: #1a1917;
-  --ok: #2f6b45;
-  --err: #a33a32;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --bg: #ebe6db;
+  --bg-deep: #e3ddd0;
+  --surface: #faf7f0;
+  --surface-2: #f3efe6;
+  --ink: #1c1915;
+  --ink-soft: #3d3832;
+  --muted: #6f6860;
+  --line: #d4cdc0;
+  --line-strong: #1c1915;
+  --ok: #2d5a3d;
+  --err: #9b3a32;
+  --radius: 16px;
+  --radius-sm: 11px;
+  --radius-xs: 8px;
+  --shadow: 0 1px 0 rgb(28 25 21 / 0.04), 0 10px 28px rgb(28 25 21 / 0.06);
+  --font: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
   font-family: var(--font);
   color: var(--ink);
@@ -22,41 +86,72 @@
 }
 
 body {
-  width: 360px;
+  width: 368px;
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgb(255 252 245 / 0.7), transparent 55%),
+    radial-gradient(90% 60% at 100% 100%, rgb(214 204 184 / 0.45), transparent 50%),
+    var(--bg);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 main {
-  padding: 20px;
+  padding: 22px 20px 18px;
 }
 
+/* —— Brand —— */
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .brand-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   flex-shrink: 0;
   display: block;
   object-fit: contain;
   background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.brand-copy {
+  min-width: 0;
 }
 
 h1 {
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.tagline {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+/* —— Panels —— */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.panel + .panel {
+  margin-top: 12px;
 }
 
 .field {
@@ -75,9 +170,10 @@ label {
   display: block;
   margin-bottom: 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .label-row label {
@@ -85,57 +181,120 @@ label {
 }
 
 .help-link {
-  color: var(--ink);
+  color: var(--ink-soft);
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .help-link:hover {
+  color: var(--ink);
   border-bottom-color: var(--ink);
 }
 
 input,
 select {
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   color: var(--ink);
-  background: var(--surface);
-  font: 14px/1.3 var(--font);
+  background: #fffefb;
+  font: 500 14px/1.3 var(--font);
+  letter-spacing: -0.01em;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 input::placeholder {
-  color: #a39c93;
+  color: #a8a094;
+  font-weight: 400;
+}
+
+input:hover,
+select:hover {
+  border-color: #c5bdb0;
 }
 
 input:focus,
 select:focus {
   border-color: var(--line-strong);
-  box-shadow: 0 0 0 3px rgba(26, 25, 23, 0.08);
+  box-shadow: 0 0 0 3px rgb(28 25 21 / 0.08);
+  background: #fff;
 }
 
+/* number + suffix */
+.input-suffix {
+  position: relative;
+}
+
+.input-suffix input {
+  padding-right: 42px;
+}
+
+.input-suffix span {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.select-wrap select {
+  appearance: none;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+/* —— Guide —— */
 .guide {
-  margin-top: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid transparent;
   overflow: hidden;
+}
+
+.guide[open] {
+  border-color: var(--line);
 }
 
 .guide summary {
   list-style: none;
   cursor: pointer;
-  padding: 12px 14px;
-  font-size: 13px;
+  padding: 10px 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ink-soft);
   user-select: none;
+  transition: color 0.15s ease;
+}
+
+.guide summary:hover {
+  color: var(--ink);
 }
 
 .guide summary::-webkit-details-marker {
@@ -147,6 +306,8 @@ select:focus {
   float: right;
   color: var(--muted);
   font-weight: 500;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .guide[open] summary::after {
@@ -155,56 +316,66 @@ select:focus {
 
 .guide ol {
   margin: 0;
-  padding: 0 14px 12px 32px;
+  padding: 0 14px 12px 30px;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.55;
 }
 
 .guide li + li {
-  margin-top: 6px;
+  margin-top: 5px;
 }
 
 .guide a {
   color: var(--ink);
   font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 .guide code {
   font-family: var(--font-mono);
-  font-size: 12px;
-  background: #efe9df;
-  border-radius: 6px;
+  font-size: 11.5px;
+  background: rgb(28 25 21 / 0.06);
+  border-radius: 5px;
   padding: 1px 5px;
+  color: var(--ink-soft);
 }
 
 .guide-note {
-  margin: 0 14px 14px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: #efe9df;
+  margin: 0 12px 12px;
+  padding: 10px 11px;
+  border-radius: var(--radius-xs);
+  background: rgb(28 25 21 / 0.04);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 400;
   line-height: 1.45;
 }
 
-.row {
+/* —— Settings row —— */
+.settings .row {
   display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
+  grid-template-columns: 0.9fr 1.1fr;
   gap: 12px;
-  margin-top: 16px;
+  margin: 0;
 }
 
-.row .field label {
-  margin-bottom: 8px;
+.settings .field label {
+  margin-bottom: 7px;
 }
 
+/* —— Status + actions —— */
 #status {
   min-height: 18px;
-  margin: 14px 0 10px;
+  margin: 14px 2px 10px;
   color: var(--err);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 500;
   line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 #status.ok {
@@ -218,17 +389,22 @@ select:focus {
 }
 
 button {
-  min-height: 44px;
+  min-height: 46px;
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  padding: 11px 14px;
   font: 600 14px/1 var(--font);
+  letter-spacing: -0.015em;
   cursor: pointer;
-  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.14s ease,
+    opacity 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 button:disabled {
   cursor: wait;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .secondary {
@@ -238,26 +414,48 @@ button:disabled {
 }
 
 .secondary:hover:not(:disabled) {
-  background: rgba(26, 25, 23, 0.04);
+  background: rgb(28 25 21 / 0.04);
 }
 
 .primary {
   border: 1px solid var(--line-strong);
-  color: #faf7f1;
+  color: #faf7f0;
   background: var(--ink);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.08) inset;
 }
 
 .primary:hover:not(:disabled) {
-  background: #2c2a27;
+  background: #2a2622;
 }
 
 button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .fine-print {
-  margin: 16px 0 0;
+  margin: 14px 2px 0;
   color: var(--muted);
   font-size: 11px;
-  line-height: 1.45;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .help-link,
+  input,
+  select,
+  .guide summary {
+    transition: none;
+  }
+
+  button:hover:not(:disabled) {
+    transform: none;
+  }
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CalmFeed",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Use X without the doomscroll. Filters hostile posts and ends your session when time is up — for builders who still want to connect and stay informed.",
   "permissions": [
     "storage",
@@ -30,6 +30,17 @@
         "content.css"
       ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*"
+      ],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ]
     }
   ],
   "icons": {
