@@ -1,8 +1,20 @@
 :root {
   color-scheme: light;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  color: #1c1b19;
-  background: #f3f0e8;
+  --bg: #f4f1ea;
+  --surface: #fffcf7;
+  --ink: #1a1917;
+  --muted: #6b6560;
+  --line: #ddd6cb;
+  --line-strong: #1a1917;
+  --ok: #2f6b45;
+  --err: #a33a32;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
 }
 
 * {
@@ -10,94 +22,208 @@
 }
 
 body {
-  width: 332px;
+  width: 360px;
   margin: 0;
-  background: #f3f0e8;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
-  padding: 22px;
+  padding: 20px;
 }
 
-header {
-  padding-bottom: 24px;
-  border-bottom: 1px solid #c9c2b4;
-  margin-bottom: 22px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
-.eyebrow {
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
   display: block;
-  margin-bottom: 26px;
-  color: #6d675d;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
+  object-fit: contain;
+  background: var(--surface);
 }
 
 h1 {
   margin: 0;
-  font-size: 38px;
-  line-height: 0.94;
-  letter-spacing: -0.04em;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.field {
+  margin: 0;
+}
+
+.label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 label {
   display: block;
-  margin-bottom: 6px;
-  color: #514d46;
-  font-size: 13px;
-  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.label-row label {
+  margin-bottom: 0;
+}
+
+.help-link {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.help-link:hover {
+  border-bottom-color: var(--ink);
 }
 
 input,
 select {
   width: 100%;
-  min-height: 39px;
-  border: 1px solid #aaa294;
-  border-radius: 7px;
-  padding: 8px 10px;
-  color: #1c1b19;
-  background: #fbf9f3;
-  font: 16px/1.2 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 14px/1.3 var(--font);
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input::placeholder {
+  color: #a39c93;
 }
 
 input:focus,
 select:focus {
-  border-color: #1c1b19;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 3px rgba(26, 25, 23, 0.08);
+}
+
+.guide {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.guide summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  user-select: none;
+}
+
+.guide summary::-webkit-details-marker {
+  display: none;
+}
+
+.guide summary::after {
+  content: "+";
+  float: right;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.guide[open] summary::after {
+  content: "−";
+}
+
+.guide ol {
+  margin: 0;
+  padding: 0 14px 12px 32px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.guide li + li {
+  margin-top: 6px;
+}
+
+.guide a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.guide code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: #efe9df;
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.guide-note {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #efe9df;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .row {
   display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
+  grid-template-columns: 0.85fr 1.15fr;
   gap: 12px;
   margin-top: 16px;
+}
+
+.row .field label {
+  margin-bottom: 8px;
 }
 
 #status {
   min-height: 18px;
   margin: 14px 0 10px;
-  color: #8d3028;
+  color: var(--err);
   font-size: 13px;
   line-height: 1.35;
 }
 
 #status.ok {
-  color: #3f5d43;
+  color: var(--ok);
 }
 
 .actions {
   display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
+  grid-template-columns: 0.85fr 1.15fr;
   gap: 10px;
 }
 
 button {
-  min-height: 41px;
-  border-radius: 7px;
-  padding: 9px 12px;
-  font: 700 15px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font: 600 14px/1 var(--font);
   cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
 }
 
 button:disabled {
@@ -106,15 +232,23 @@ button:disabled {
 }
 
 .secondary {
-  border: 1px solid #1c1b19;
-  color: #1c1b19;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
   background: transparent;
 }
 
+.secondary:hover:not(:disabled) {
+  background: rgba(26, 25, 23, 0.04);
+}
+
 .primary {
-  border: 1px solid #1c1b19;
-  color: #f8f5ed;
-  background: #1c1b19;
+  border: 1px solid var(--line-strong);
+  color: #faf7f1;
+  background: var(--ink);
+}
+
+.primary:hover:not(:disabled) {
+  background: #2c2a27;
 }
 
 button:hover:not(:disabled) {
@@ -123,7 +257,7 @@ button:hover:not(:disabled) {
 
 .fine-print {
   margin: 16px 0 0;
-  color: #716b61;
+  color: var(--muted);
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.45;
 }

@@ -472,7 +472,7 @@ function showSessionEnded() {
 
   const eyebrow = document.createElement("span");
   eyebrow.className = "calm-x-eyebrow";
-  eyebrow.textContent = "CALMFEED";
+  eyebrow.textContent = "CalmFeed";
 
   const title = document.createElement("h1");
   title.textContent = "Session finished.";

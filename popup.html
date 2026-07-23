@@ -3,26 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CalmFeed for X</title>
+  <title>CalmFeed</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <main>
-    <header>
-      <span class="eyebrow">CALMFEED FOR X</span>
-      <h1>Use X.<br>Then leave.</h1>
+    <header class="brand">
+      <img class="brand-icon" src="icons/icon-48.png" width="36" height="36" alt="">
+      <h1>CalmFeed</h1>
     </header>
 
-    <label for="apiKey">Gemini API key</label>
-    <input id="apiKey" type="password" autocomplete="off" placeholder="AIza..." spellcheck="false">
+    <section class="field">
+      <div class="label-row">
+        <label for="apiKey">Gemini API key</label>
+        <a
+          class="help-link"
+          href="https://aistudio.google.com/apikey"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Get a free key</a>
+      </div>
+      <input
+        id="apiKey"
+        type="password"
+        autocomplete="off"
+        placeholder="AIza..."
+        spellcheck="false"
+      >
+    </section>
+
+    <details class="guide">
+      <summary>How to get a Gemini API key</summary>
+      <ol>
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
+        <li>Sign in with your Google account</li>
+        <li>Click <strong>Create API key</strong></li>
+        <li>Copy the key (starts with <code>AIza</code>)</li>
+        <li>Paste it above and hit <strong>Save</strong></li>
+      </ol>
+      <p class="guide-note">
+        Free tier is enough for personal use. The key stays in this browser only —
+        CalmFeed has no servers. Text and compressed media go straight to Google for embeddings.
+      </p>
+    </details>
 
     <div class="row">
-      <div>
+      <div class="field">
         <label for="minutes">Minutes</label>
         <input id="minutes" type="number" min="1" max="120" value="10">
       </div>
 
-      <div>
+      <div class="field">
         <label for="sensitivity">Filter</label>
         <select id="sensitivity">
           <option value="gentle">Gentle</option>
@@ -39,7 +70,10 @@
       <button id="start" class="primary" type="button">Start session</button>
     </div>
 
-    <p class="fine-print">Your key stays in this browser. Post text and tweet images go directly to Gemini for embeddings. No CalmFeed servers.</p>
+    <p class="fine-print">
+      Your key never leaves this browser except when calling Gemini.
+      Uninstall removes local storage.
+    </p>
   </main>
 
   <script src="popup.js"></script>

@@ -18,7 +18,10 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   border-bottom: 1px solid rgb(207, 217, 222);
   color: rgb(15, 20, 25);
   background: rgb(247, 245, 239);
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  border-radius: 12px;
+  margin: 8px 12px;
+  border: 1px solid rgb(221, 214, 203);
 }
 
 article[data-calm-x-state="pending"] .calm-x-card {
@@ -31,23 +34,23 @@ article[data-calm-x-state="pending"] .calm-x-card {
 }
 
 .calm-x-card-copy strong {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .calm-x-card-copy span {
-  font-size: 14px;
+  font-size: 13px;
   color: rgb(83, 78, 69);
 }
 
 .calm-x-card button {
   appearance: none;
   border: 1px solid rgb(56, 52, 47);
-  border-radius: 7px;
-  padding: 7px 12px;
+  border-radius: 10px;
+  padding: 8px 12px;
   color: rgb(28, 27, 25);
   background: transparent;
-  font: 700 14px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font: 600 13px/1 "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   cursor: pointer;
 }
 
@@ -62,13 +65,14 @@ article[data-calm-x-state="pending"] .calm-x-card {
   z-index: 2147483646;
   min-width: 58px;
   box-sizing: border-box;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid rgb(56, 52, 47);
-  border-radius: 7px;
+  border-radius: 12px;
   color: rgb(28, 27, 25);
   background: rgb(247, 245, 239);
-  font: 700 15px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font: 600 14px/1 "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   text-align: center;
+  box-shadow: 0 8px 24px rgba(28, 27, 25, 0.08);
 }
 
 .calm-x-overlay {
@@ -80,34 +84,36 @@ article[data-calm-x-state="pending"] .calm-x-card {
   padding: 24px;
   background: rgb(235, 231, 221);
   color: rgb(28, 27, 25);
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
 }
 
 .calm-x-end-panel {
   width: min(470px, 100%);
-  border-top: 2px solid rgb(28, 27, 25);
-  padding-top: 20px;
+  border-radius: 20px;
+  border: 1px solid rgb(28, 27, 25);
+  padding: 28px 24px;
+  background: rgb(247, 245, 239);
 }
 
 .calm-x-eyebrow {
   display: block;
-  margin-bottom: 34px;
-  font-size: 11px;
+  margin-bottom: 24px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: -0.02em;
 }
 
 .calm-x-end-panel h1 {
   margin: 0 0 12px;
-  font-size: clamp(38px, 8vw, 64px);
-  line-height: 0.95;
-  letter-spacing: -0.035em;
+  font-size: clamp(32px, 7vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .calm-x-end-panel p {
   max-width: 430px;
   margin: 0;
   color: rgb(83, 78, 69);
-  font-size: 18px;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.5;
 }

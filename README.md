@@ -1,12 +1,14 @@
-# CalmFeed for X
+# <img src="icons/icon-48.png" alt="" width="36" height="36" align="absmiddle"> CalmFeed
 
 **For builders that want to use X — without the doomscroll.**
 
-An open-source browser extension that makes X less miserable to use. Stay connected and informed. Filter toxicity. Leave when your session ends.
+Open-source browser extension that makes X less miserable to use. Stay connected and informed. Filter toxicity. Leave when your session ends.
 
-> I’m building an open-source browser extension that makes X less miserable to use.  
-> For builders that want to use X but want to avoid doomscrolling and toxicity but want to still connect with people and stay informed.  
-> Coming soon............................................... :P
+<p align="center">
+  <img src="icons/logo.png" alt="CalmFeed logo" width="160" height="160">
+</p>
+
+MIT licensed. No backend, no accounts, no analytics.
 
 ## What it does
 
@@ -18,8 +20,6 @@ An open-source browser extension that makes X less miserable to use. Stay connec
 - Collapses likely negative, hostile, or graphic posts
 - Ends X when your **session timer** expires
 
-There is no project backend, account, database, or analytics. MIT licensed. 100% open source.
-
 ## Install on Microsoft Edge
 
 1. Clone this repo (or download the ZIP and unzip it):
@@ -29,58 +29,38 @@ There is no project backend, account, database, or analytics. MIT licensed. 100%
 2. Open Edge and go to: `edge://extensions`
 3. Turn on **Developer mode** (bottom-left toggle)
 4. Click **Load unpacked**
-5. Select this folder: `C:\Users\vstal\calmfeed`  
-   (the folder that contains `manifest.json`)
-6. Pin CalmFeed from the extensions menu (puzzle icon) if you want one-click access
+5. Select the folder that contains `manifest.json`
+6. Pin CalmFeed from the extensions menu if you want one-click access
 
 ### Chrome
 
-Same steps, but open `chrome://extensions` instead of `edge://extensions`.
+Same steps at `chrome://extensions`.
 
-## How to use
+## How to get a Gemini API key
 
-### 1. Get a free Gemini API key
+CalmFeed needs a free Gemini key so it can classify posts on-device via Google’s API.
 
-1. Open [Google AI Studio](https://aistudio.google.com/apikey)
-2. Create an API key
-3. Copy it (starts with `AIza...`)
-
-CalmFeed stores the key **only in your browser**. It talks to Google’s Gemini API directly — no CalmFeed servers.
-
-### 2. Configure the extension
-
-1. Click the **CalmFeed for X** icon in Edge
-2. Paste your Gemini API key
-3. Pick session length (**Minutes**, 1–120)
-4. Pick filter strength:
-   - **Gentle** — hide only clear toxicity
-   - **Balanced** — default
-   - **Strict** — more aggressive filtering
-5. Click **Save** (you should see “Saved. Gemini is connected.”)
-6. Click **Start session**
+1. Open **[Google AI Studio → API keys](https://aistudio.google.com/apikey)**
+2. Sign in with your Google account
+3. Click **Create API key**
+4. Copy the key (it starts with `AIza…`)
+5. Open the CalmFeed popup → paste the key → **Save**
+6. Set minutes + filter strength → **Start session**
 7. Refresh [x.com](https://x.com)
 
-### 3. Browse normally
+Your key is stored only in `chrome.storage.local` on this browser. CalmFeed has no servers. See [PRIVACY.md](./PRIVACY.md).
 
-- Posts are checked before you see them
-- Likely toxic / hostile / graphic posts stay collapsed — click **Show** if you want them
-- A small timer badge shows remaining session time
-- When time is up, CalmFeed blocks X until you start a new session
+### Filter modes
 
-### Tips for builders
-
-- Use short sessions (5–15 min) for replies, DMs, and news — then leave
-- Prefer **Following** / lists over For You when you can
-- Strict mode is useful on high-noise days; Gentle if you care about fewer false positives
-- Classification will make mistakes — that is expected for v0.5
+| Mode | Behavior |
+|------|----------|
+| Gentle | Hide only clear toxicity |
+| Balanced | Default |
+| Strict | More aggressive filtering |
 
 ## Privacy
 
-See [PRIVACY.md](./PRIVACY.md). Short version:
-
-- No CalmFeed backend
-- Key + settings stay in `chrome.storage.local`
-- Text (and sometimes compressed images / video frames) go **only** to Google Gemini for embeddings
+See [PRIVACY.md](./PRIVACY.md).
 
 ## Development
 
@@ -89,12 +69,13 @@ Plain Manifest V3 JavaScript and CSS. **No build step.**
 ```text
 calmfeed/
   manifest.json
-  background.js   # Gemini embeddings + session timer
-  content.js      # DOM scanning, hide/show, overlays
+  background.js
+  content.js
   content.css
   popup.html
   popup.js
   popup.css
+  icons/
 ```
 
 After editing:
@@ -114,4 +95,4 @@ After editing:
 
 ## License
 
-[MIT](./LICENSE) — free to use, fork, ship, and sell.
+[MIT](./LICENSE)
