@@ -1,9 +1,12 @@
 const observed = new WeakSet();
 const articleByRequestId = new Map();
 const queue = [];
+const decisionCache = new Map(); // postId -> { hide: boolean }
 const VIDEO_FRAME_MAX_DIMENSION = 1280;
 const VIDEO_FRAME_MAX_BYTES = 300_000;
 const CARD_CLASS = "calm-x-card";
+const CACHE_STORAGE_KEY = "calmfeed-decisions-v1";
+const MAX_DECISION_CACHE = 1000;
 
 let filteringEnabled = false;
 let batchTimer = 0;
@@ -14,14 +17,17 @@ let timerId = 0;
 let timerBadge = null;
 let sessionOverlay = null;
 let stylesInjected = false;
+let cacheSaveTimer = 0;
 
+// Smaller lookahead than before — huge rootMargin classified far-off posts,
+// collapsed their height, and made X think you were near the bottom.
 const intersectionObserver = new IntersectionObserver(entries => {
   for (const entry of entries) {
     if (!entry.isIntersecting) continue;
     intersectionObserver.unobserve(entry.target);
     enqueue(entry.target);
   }
-}, { rootMargin: "1200px 0px" });
+}, { rootMargin: "480px 0px" });
 
 const mutationObserver = new MutationObserver(mutations => {
   if (!filteringEnabled) return;
@@ -77,6 +83,7 @@ start().catch(error => {
 async function start() {
   document.documentElement.classList.add("calm-x-booting");
   injectStyles();
+  loadDecisionCache();
 
   const response = await chrome.runtime.sendMessage({ type: "getState" });
   filteringEnabled = Boolean(response?.state?.hasApiKey);
@@ -95,7 +102,74 @@ async function start() {
   });
 
   runTimer();
-  console.info("[CalmFeed] content script v0.5.5 active");
+  console.info("[CalmFeed] content script v0.5.6 active — decision cache", decisionCache.size);
+}
+
+function loadDecisionCache() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY);
+    if (!raw) return;
+    const entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (!Array.isArray(entry) || entry.length < 2) continue;
+      const [postId, value] = entry;
+      if (typeof postId === "string" && postId && value && typeof value.hide === "boolean") {
+        decisionCache.set(postId, { hide: value.hide });
+      }
+    }
+  } catch {
+    // sessionStorage may be unavailable
+  }
+}
+
+function rememberDecision(postId, hide) {
+  if (!postId) return;
+  decisionCache.set(postId, { hide: Boolean(hide) });
+
+  while (decisionCache.size > MAX_DECISION_CACHE) {
+    const oldest = decisionCache.keys().next().value;
+    decisionCache.delete(oldest);
+  }
+
+  window.clearTimeout(cacheSaveTimer);
+  cacheSaveTimer = window.setTimeout(() => {
+    try {
+      sessionStorage.setItem(
+        CACHE_STORAGE_KEY,
+        JSON.stringify([...decisionCache.entries()])
+      );
+    } catch {
+      // quota / private mode
+    }
+  }, 200);
+}
+
+function getCachedDecision(postId) {
+  if (!postId) return null;
+  return decisionCache.get(postId) || null;
+}
+
+/** Keep scroll position stable when height changes above the viewport. */
+function withScrollAnchor(article, apply) {
+  if (!article) {
+    apply();
+    return;
+  }
+
+  const rect = article.getBoundingClientRect();
+  const anchorAbove = rect.top < 0;
+  const heightBefore = article.offsetHeight;
+
+  apply();
+
+  if (!anchorAbove || !article.isConnected) return;
+
+  const delta = article.offsetHeight - heightBefore;
+  if (delta !== 0) {
+    const scroller = document.scrollingElement || document.documentElement;
+    scroller.scrollTop += delta;
+  }
 }
 
 function injectStyles() {
@@ -104,7 +178,7 @@ function injectStyles() {
 
   const style = document.createElement("style");
   style.id = "calmfeed-styles";
-  style.setAttribute("data-calmfeed", "0.5.5");
+  style.setAttribute("data-calmfeed", "0.5.6");
   style.textContent = getCalmFeedStyles();
   (document.documentElement || document.head).append(style);
   stylesInjected = true;
@@ -127,19 +201,33 @@ function getCalmFeedStyles() {
 @font-face{font-family:"Bricolage Grotesque";src:url("${bricolage700}") format("woff2");font-weight:700;font-style:normal;font-display:swap}
 
 html.calm-x-booting article[data-testid="tweet"]{visibility:hidden!important}
+html.calm-x-active{overflow-anchor:auto}
 
-article[data-testid="tweet"][data-calm-x-state="pending"],
+/* Pending: keep natural tweet height (overlay only) so scroll doesn't jump. */
+article[data-testid="tweet"][data-calm-x-state="pending"]{
+  position:relative!important;overflow:hidden!important
+}
+article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card){
+  visibility:hidden!important;pointer-events:none!important
+}
+article[data-testid="tweet"][data-calm-x-state="pending"]>.calm-x-card{
+  position:absolute!important;inset:0!important;z-index:5!important;
+  min-height:100%!important;height:100%!important;border-bottom:none!important
+}
+
+/* Hidden: collapse to compact shell. */
 article[data-testid="tweet"][data-calm-x-state="hidden"]{
   display:block!important;position:relative!important;overflow:hidden!important;
   min-height:0!important;height:auto!important;padding:0!important;margin:0!important;
-  border:none!important;background:transparent!important
+  border:none!important;background:transparent!important;overflow-anchor:none
 }
-
-article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card),
 article[data-testid="tweet"][data-calm-x-state="hidden"]>:not(.calm-x-card){
   display:none!important;visibility:hidden!important;pointer-events:none!important;
   height:0!important;max-height:0!important;overflow:hidden!important;
   margin:0!important;padding:0!important;border:none!important
+}
+article[data-testid="tweet"][data-calm-x-state="hidden"]>.calm-x-card{
+  position:relative!important;inset:auto!important;height:auto!important;min-height:92px!important
 }
 
 .calm-x-card{
@@ -235,14 +323,38 @@ function scan(root) {
 
 function observe(article) {
   if (observed.has(article)) return;
-
   observed.add(article);
+
+  const postId = extractPostId(article);
+  const cached = getCachedDecision(postId);
+
+  // X remounts tweets while scrolling. Reuse the last decision instantly —
+  // no "Checking post" flash, no height collapse, no re-fetch.
+  if (cached) {
+    article.dataset.calmXQueued = "true";
+    if (cached.hide) {
+      showHidden(article, { postId, fromCache: true });
+    } else {
+      showArticle(article, { postId, fromCache: true });
+    }
+    return;
+  }
+
   showPending(article);
   intersectionObserver.observe(article);
 }
 
 function enqueue(article) {
   if (!article.isConnected || article.dataset.calmXQueued === "true") return;
+
+  const postId = extractPostId(article);
+  const cached = getCachedDecision(postId);
+  if (cached) {
+    article.dataset.calmXQueued = "true";
+    if (cached.hide) showHidden(article, { postId, fromCache: true });
+    else showArticle(article, { postId, fromCache: true });
+    return;
+  }
 
   article.dataset.calmXQueued = "true";
   queue.push(article);
@@ -285,17 +397,23 @@ async function flushBatches() {
           articleByRequestId.delete(post.requestId);
           if (!article?.isConnected) continue;
 
-          if (response?.ok && result?.hide) {
-            showHidden(article);
+          const hide = Boolean(response?.ok && result?.hide);
+          rememberDecision(post.postId, hide);
+
+          if (hide) {
+            showHidden(article, { postId: post.postId });
           } else {
-            showArticle(article);
+            showArticle(article, { postId: post.postId });
           }
         }
       } catch {
         for (const post of posts) {
           const article = articleByRequestId.get(post.requestId);
           articleByRequestId.delete(post.requestId);
-          if (article?.isConnected) showArticle(article);
+          if (!article?.isConnected) continue;
+          // Fail open — don't cache failures as "safe forever" for empty errors,
+          // but allow the post through without sticky pending.
+          showArticle(article, { postId: post.postId });
         }
       }
 
@@ -486,6 +604,7 @@ function showPending(article) {
   if (article.dataset.calmXState === "pending" && getCard(article)) return;
   if (article.dataset.calmXState === "hidden" || article.dataset.calmXState === "shown") return;
 
+  // Height-preserving: absolute overlay, tweet layout stays put.
   article.dataset.calmXState = "pending";
   article.setAttribute("aria-busy", "true");
   mountCard(article, {
@@ -495,23 +614,33 @@ function showPending(article) {
   });
 }
 
-function showHidden(article) {
-  article.dataset.calmXState = "hidden";
-  article.removeAttribute("aria-busy");
+function showHidden(article, options = {}) {
+  const postId = options.postId || extractPostId(article);
 
-  mountCard(article, {
-    state: "hidden",
-    title: "Post hidden",
-    note: "Likely negative, hostile, or graphic.",
-    buttonLabel: "Show anyway",
-    onClick: () => showArticle(article)
+  withScrollAnchor(article, () => {
+    article.dataset.calmXState = "hidden";
+    article.removeAttribute("aria-busy");
+
+    mountCard(article, {
+      state: "hidden",
+      title: "Post hidden",
+      note: "Likely negative, hostile, or graphic.",
+      buttonLabel: "Show anyway",
+      onClick: () => {
+        // Manual reveal — remember as shown so remounts stay open.
+        rememberDecision(postId, false);
+        showArticle(article, { postId });
+      }
+    });
   });
 }
 
-function showArticle(article) {
-  article.dataset.calmXState = "shown";
-  article.removeAttribute("aria-busy");
-  getCard(article)?.remove();
+function showArticle(article, options = {}) {
+  withScrollAnchor(article, () => {
+    article.dataset.calmXState = "shown";
+    article.removeAttribute("aria-busy");
+    getCard(article)?.remove();
+  });
 }
 
 function mountCard(article, options) {
@@ -532,8 +661,9 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
   const card = document.createElement("div");
   card.className = CARD_CLASS;
   card.dataset.state = state || "pending";
-  card.dataset.calmfeedVersion = "0.5.5";
+  card.dataset.calmfeedVersion = "0.5.6";
   card.setAttribute("role", "status");
+  const isPending = state === "pending";
   Object.assign(card.style, {
     boxSizing: "border-box",
     display: "flex",
@@ -541,17 +671,21 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
     justifyContent: "space-between",
     gap: "14px",
     width: "100%",
-    minHeight: "92px",
+    minHeight: isPending ? "100%" : "92px",
+    height: isPending ? "100%" : "auto",
     margin: "0",
     padding: "16px",
     border: "none",
-    borderBottom: "1px solid #e4e3e0",
+    borderBottom: isPending ? "none" : "1px solid #e4e3e0",
     borderRadius: "0",
     color: "#141413",
-    background: "#f3f2f0",
+    background: isPending ? "rgba(243, 242, 240, 0.96)" : "#f3f2f0",
     fontFamily: '"Bricolage Grotesque", system-ui, -apple-system, sans-serif',
     cursor: "default",
-    WebkitFontSmoothing: "antialiased"
+    WebkitFontSmoothing: "antialiased",
+    position: isPending ? "absolute" : "relative",
+    inset: isPending ? "0" : "auto",
+    zIndex: isPending ? "5" : "auto"
   });
 
   const mark = document.createElement("div");

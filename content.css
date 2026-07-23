@@ -4,7 +4,25 @@ html.calm-x-booting article[data-testid="tweet"] {
   visibility: hidden !important;
 }
 
-article[data-testid="tweet"][data-calm-x-state="pending"],
+/* Pending keeps tweet height — overlay only (avoids scroll thrash). */
+article[data-testid="tweet"][data-calm-x-state="pending"] {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+article[data-testid="tweet"][data-calm-x-state="pending"] > :not(.calm-x-card) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+article[data-testid="tweet"][data-calm-x-state="pending"] > .calm-x-card {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 5 !important;
+  min-height: 100% !important;
+  height: 100% !important;
+}
+
 article[data-testid="tweet"][data-calm-x-state="hidden"] {
   display: block !important;
   position: relative !important;
@@ -17,7 +35,6 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] {
   background: transparent !important;
 }
 
-article[data-testid="tweet"][data-calm-x-state="pending"] > :not(.calm-x-card),
 article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   display: none !important;
   visibility: hidden !important;

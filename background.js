@@ -211,9 +211,12 @@ async function classifyPosts(apiKey, sensitivity, prototypeVectors, posts, sende
 
 function storeResult(post, result, output) {
   cache.set(post.cacheKey, result);
+  if (post.postId) cache.set(`id:${post.postId}`, result);
   output.set(post.requestId, { requestId: post.requestId, ...result });
 
-  if (cache.size > 500) cache.delete(cache.keys().next().value);
+  while (cache.size > 800) {
+    cache.delete(cache.keys().next().value);
+  }
 }
 
 async function getPrototypeVectors(state) {
@@ -662,10 +665,12 @@ function getThreshold(sensitivity) {
 }
 
 function createCacheKey(post) {
+  // Prefer stable status id so remounted tweets hit the in-memory cache.
+  if (post.postId) return `id:${post.postId}`;
+
   const mediaIdentity = `${post.imageUrls.join("|")}|video:${post.hasVideo}`;
-  const identity = post.postId || hash(`${post.text}|${mediaIdentity}`);
   const contentHash = hash(`${post.text}|${mediaIdentity}`);
-  return `${identity}:${contentHash}`;
+  return `hash:${contentHash}`;
 }
 
 function arrayBufferToBase64(buffer) {
