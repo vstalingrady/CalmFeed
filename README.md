@@ -1,70 +1,40 @@
-# <img src="icons/icon-48.png" alt="" width="36" height="36" align="absmiddle"> CalmFeed
+# <img src="icons/icon-48.png" alt="" width="36" height="36" align="absmiddle"> Calmfeed
 
-**For builders that want to use X — without the doomscroll.**
-
-Open-source browser extension that makes X less miserable to use. Stay connected and informed. Filter toxicity. Leave when your session ends.
+X gets ugly fast. Calmfeed is a browser extension that asks why you’re opening X, blurs the posts you asked it to filter, then kicks you off when the timer hits zero. Visits (reason + time) stay in local browser storage — no servers.
 
 <p align="center">
-  <img src="icons/logo.png" alt="CalmFeed logo" width="160" height="160">
+  <img src="icons/logo.png" alt="Calmfeed logo" width="160" height="160">
 </p>
 
-MIT licensed. No backend, no accounts, no analytics.
+## What it actually does
 
-## What it does
+While a session is running, the content script watches the feed and sends batches of post text to **Gemini Embedding 2**. Matches against your enabled filters get blurred in place (Show button to peek). Media only goes to Google when text alone isn't enough: images get resized and JPEG'd locally first, and videos contribute at most two compressed frames, never the full file.
 
-- Covers X posts **before** they hit the viewport
-- Classifies text in batches with **Gemini Embedding 2**
-- Compresses tweet images locally before sending them
-- Samples up to two video frames instead of uploading full videos
-- Only analyzes media when text is uncertain
-- Collapses likely negative, hostile, or graphic posts
-- Ends X when your **session timer** expires
+Open X without a live session and you get **Why are you here?** — write a reason, pick minutes, start. Each visit lands in a local log (today / week totals in the popup). Active time ticks only while the tab is visible.
 
-## Install on Microsoft Edge
+Filters are opt-in. Hostility, doom, graphic stuff, rage bait, engagement farms — all off until you flip them in the Filter side panel. When the session ends, Calmfeed blocks x.com until you start another one.
 
-1. Clone this repo (or download the ZIP and unzip it):
-   ```bash
-   git clone https://github.com/vstalingrady/CalmFeed.git
-   ```
-2. Open Edge and go to: `edge://extensions`
-3. Turn on **Developer mode** (bottom-left toggle)
-4. Click **Load unpacked**
-5. Select the folder that contains `manifest.json`
-6. Pin CalmFeed from the extensions menu if you want one-click access
+It will misclassify posts. X will break selectors. Treat both as expected.
 
-### Chrome
+## Install (Edge)
 
-Same steps at `chrome://extensions`.
+```bash
+git clone https://github.com/vstalingrady/CalmFeed.git
+```
 
-## How to get a Gemini API key
+Open `edge://extensions`, turn on **Developer mode**, hit **Load unpacked**, and pick the folder that contains `manifest.json`. Pin it if you want the popup one click away.
 
-CalmFeed needs a free Gemini key so it can classify posts on-device via Google’s API.
+Chrome is the same dance at `chrome://extensions`.
 
-1. Open **[Google AI Studio → API keys](https://aistudio.google.com/apikey)**
-2. Sign in with your Google account
-3. Click **Create API key**
-4. Copy the key (it starts with `AIza…`)
-5. Open the CalmFeed popup → paste the key → **Save**
-6. Set minutes + filter strength → **Start session**
-7. Refresh [x.com](https://x.com)
+## Gemini key
 
-Your key is stored only in `chrome.storage.local` on this browser. CalmFeed has no servers. See [PRIVACY.md](./PRIVACY.md).
+You need a free key from [Google AI Studio](https://aistudio.google.com/apikey). Create one, paste it into the Calmfeed popup, Save, set session length + strength, turn on whatever you want filtered, then Start session. Refresh [x.com](https://x.com).
 
-### Filter modes
+Keys and settings never leave your browser except when the extension calls Google's embedding API to classify a post. Details: [PRIVACY.md](./PRIVACY.md).
 
-| Mode | Behavior |
-|------|----------|
-| Gentle | Hide only clear toxicity |
-| Balanced | Default |
-| Strict | More aggressive filtering |
+## Dev
 
-## Privacy
-
-See [PRIVACY.md](./PRIVACY.md).
-
-## Development
-
-Plain Manifest V3 JavaScript and CSS. **No build step.**
+Plain Manifest V3 JS/CSS. No bundler.
 
 ```text
 calmfeed/
@@ -72,26 +42,17 @@ calmfeed/
   background.js
   content.js
   content.css
-  popup.html
-  popup.js
-  popup.css
+  popup.html / popup.js / popup.css
+  theme-boot.js
   icons/
+  fonts/
 ```
 
-After editing:
+Edit → Reload on the extensions page → hard-refresh X. That's the loop.
 
-1. Open `edge://extensions`
-2. Click **Reload** on CalmFeed
-3. Refresh X
+## Known sharp edges
 
-## Current limitations
-
-- Classification will make mistakes
-- X may change its DOM selectors
-- A paused video may provide only one frame
-- Browser security may block frame capture for some videos
-- In-memory result cache resets when the service worker suspends
-- Session-ended screen blocks all of X until a new session starts
+Classification mistakes are normal; fail-open means uncertain posts still show. A paused video might only yield one frame, and some players block capture. The in-memory classify cache dies when the service worker sleeps. Session-end locks the whole site until you start again on purpose.
 
 ## License
 

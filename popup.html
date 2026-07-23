@@ -1,56 +1,61 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CalmFeed</title>
+  <title>Calmfeed</title>
   <link rel="stylesheet" href="popup.css">
+  <script src="theme-boot.js"></script>
 </head>
 <body>
-  <main>
-    <header class="brand">
-      <img class="brand-icon" src="icons/icon-48.png" width="40" height="40" alt="">
-      <div class="brand-copy">
-        <h1>CalmFeed</h1>
-        <p class="tagline">X, without the doomscroll</p>
-      </div>
-    </header>
+  <div class="shell">
+    <main>
+      <header class="brand">
+        <img class="brand-icon" src="icons/icon-48.png" width="40" height="40" alt="">
+        <div class="brand-copy">
+          <h1>Calmfeed</h1>
+          <p class="tagline">X, without the doomscroll</p>
+        </div>
+      </header>
 
-    <section class="panel field" aria-labelledby="key-label">
-      <div class="label-row">
-        <label id="key-label" for="apiKey">Gemini API key</label>
-        <a
-          class="help-link"
-          href="https://aistudio.google.com/apikey"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Get free key ↗</a>
-      </div>
-      <input
-        id="apiKey"
-        type="password"
-        autocomplete="off"
-        placeholder="AIza…"
-        spellcheck="false"
-      >
-      <details class="guide">
-        <summary>How to get a key</summary>
-        <ol>
-          <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
-          <li>Sign in with Google</li>
-          <li>Click <strong>Create API key</strong></li>
-          <li>Copy it (starts with <code>AIza</code>)</li>
-          <li>Paste above → <strong>Save</strong></li>
-        </ol>
-        <p class="guide-note">
-          Free tier is fine for personal use. Key stays in this browser.
-          CalmFeed has no servers — text goes straight to Gemini for embeddings.
-        </p>
-      </details>
-    </section>
+      <section class="panel field" aria-labelledby="key-label">
+        <div class="label-row">
+          <label id="key-label" for="apiKey">Gemini API key</label>
+        </div>
+        <input
+          id="apiKey"
+          type="password"
+          autocomplete="off"
+          placeholder="AIza…"
+          spellcheck="false"
+        >
+        <details class="guide">
+          <summary>How to get a key</summary>
+          <div class="guide-body">
+            <ol>
+              <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></li>
+              <li>Sign in with Google</li>
+              <li>Click <strong>Create API key</strong></li>
+              <li>Copy it (starts with <code>AIza</code>)</li>
+              <li>Paste above → <strong>Save</strong></li>
+            </ol>
+          </div>
+        </details>
+      </section>
 
-    <section class="panel settings">
-      <div class="row">
+      <section class="panel settings">
+        <div class="field">
+          <label for="reason">Why are you opening X?</label>
+          <input
+            id="reason"
+            type="text"
+            maxlength="200"
+            placeholder="One sentence"
+            autocomplete="off"
+            spellcheck="true"
+          >
+        </div>
+
         <div class="field">
           <label for="minutes">Session</label>
           <div class="input-suffix">
@@ -59,31 +64,42 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="sensitivity">Filter</label>
-          <div class="select-wrap">
-            <select id="sensitivity">
-              <option value="gentle">Gentle</option>
-              <option value="balanced">Balanced</option>
-              <option value="strict">Strict</option>
-            </select>
-          </div>
+        <div class="field filter-trigger-field">
+          <label for="filterToggle">Filter</label>
+          <button id="filterToggle" class="filter-trigger" type="button" aria-expanded="false" aria-controls="filterPanel">
+            <span id="filterSummary">Off</span>
+            <span class="filter-trigger-chevron" aria-hidden="true">›</span>
+          </button>
         </div>
+      </section>
+
+      <section class="panel visits" aria-labelledby="visits-label">
+        <div class="section-label" id="visits-label">Time on X</div>
+        <p class="visit-summary" id="visitSummary">No visits logged yet.</p>
+        <div class="visit-list" id="visitList"></div>
+      </section>
+
+      <p id="status" role="status"></p>
+
+      <div class="actions">
+        <button id="save" class="secondary" type="button">Save</button>
+        <button id="start" class="primary" type="button">Start session</button>
       </div>
-    </section>
 
-    <p id="status" role="status"></p>
+      <p class="fine-print">
+        <span class="version">v0.6.5</span>
+      </p>
+    </main>
 
-    <div class="actions">
-      <button id="save" class="secondary" type="button">Save</button>
-      <button id="start" class="primary" type="button">Start session</button>
-    </div>
-
-    <p class="fine-print">
-      Local only · no CalmFeed backend · uninstall clears storage
-      <span class="version">v0.5.6</span>
-    </p>
-  </main>
+    <aside id="filterPanel" class="filter-panel" hidden aria-labelledby="filter-panel-title">
+      <div class="filter-panel-head">
+        <h2 id="filter-panel-title">Filter</h2>
+        <button id="filterClose" class="filter-close" type="button" aria-label="Close filter">×</button>
+      </div>
+      <p class="section-hint">Off by default. Turn on only what you want blurred.</p>
+      <div class="category-list" id="categoryList"></div>
+    </aside>
+  </div>
 
   <script src="popup.js"></script>
 </body>

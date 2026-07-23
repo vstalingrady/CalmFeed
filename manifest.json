@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "CalmFeed",
-  "version": "0.5.6",
+  "name": "Calmfeed",
+  "version": "0.6.5",
   "description": "Use X without the doomscroll. Filters hostile posts and ends your session when time is up — for builders who still want to connect and stay informed.",
   "permissions": [
     "storage",
@@ -50,7 +50,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "CalmFeed",
+    "default_title": "Calmfeed",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",

@@ -6,7 +6,8 @@ The extension stores these values in `chrome.storage.local`:
 
 - your Gemini API key,
 - session length,
-- filtering sensitivity,
+- filter categories,
+- visit log (reasons + time on X),
 - cached prototype embeddings,
 - current session end time.
 

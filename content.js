@@ -1,11 +1,11 @@
 const observed = new WeakSet();
 const articleByRequestId = new Map();
 const queue = [];
-const decisionCache = new Map(); // postId -> { hide: boolean }
+const decisionCache = new Map(); // postId -> { decision, reason }
 const VIDEO_FRAME_MAX_DIMENSION = 1280;
 const VIDEO_FRAME_MAX_BYTES = 300_000;
 const CARD_CLASS = "calm-x-card";
-const CACHE_STORAGE_KEY = "calmfeed-decisions-v1";
+const CACHE_STORAGE_KEY = "calmfeed-decisions-v4";
 const MAX_DECISION_CACHE = 1000;
 
 let filteringEnabled = false;
@@ -18,6 +18,8 @@ let timerBadge = null;
 let sessionOverlay = null;
 let stylesInjected = false;
 let cacheSaveTimer = 0;
+let visitPingId = 0;
+let defaultSessionMinutes = 10;
 
 // Smaller lookahead than before — huge rootMargin classified far-off posts,
 // collapsed their height, and made X think you were near the bottom.
@@ -42,14 +44,34 @@ const mutationObserver = new MutationObserver(mutations => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "sessionEnded") {
     sessionEndsAt = 0;
-    showSessionEnded();
+    stopVisitPing();
+    removeTimerBadge();
+    showIntentGateWithStats(true);
     return undefined;
   }
 
   if (message?.type === "sessionStarted") {
     sessionEndsAt = Number(message.sessionEndsAt) || 0;
-    hideSessionEnded();
+    hideSessionOverlay();
     runTimer();
+    startVisitPing();
+    return undefined;
+  }
+
+  if (message?.type === "categoriesChanged") {
+    decisionCache.clear();
+    try {
+      sessionStorage.removeItem(CACHE_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    document.querySelectorAll('article[data-testid="tweet"]').forEach(article => {
+      delete article.dataset.calmXQueued;
+      delete article.dataset.calmXState;
+      getCard(article)?.remove();
+      observed.delete(article);
+    });
+    if (filteringEnabled) scan(document);
     return undefined;
   }
 
@@ -66,12 +88,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
 
-  if (changes.sessionBlocked?.newValue === true) showSessionEnded();
-  if (changes.sessionBlocked?.newValue === false) hideSessionEnded();
+  if (changes.sessionBlocked?.newValue === true) {
+    sessionEndsAt = 0;
+    stopVisitPing();
+    removeTimerBadge();
+    showIntentGateWithStats(true);
+  }
 
   if (changes.sessionEndsAt) {
     sessionEndsAt = Number(changes.sessionEndsAt.newValue) || 0;
-    if (sessionEndsAt > Date.now()) runTimer();
+    if (sessionEndsAt > Date.now()) {
+      hideSessionOverlay();
+      runTimer();
+      startVisitPing();
+    } else if (!sessionOverlay) {
+      showIntentGate({ finished: Boolean(changes.sessionBlocked?.newValue) });
+    }
   }
 });
 
@@ -88,11 +120,25 @@ async function start() {
   const response = await chrome.runtime.sendMessage({ type: "getState" });
   filteringEnabled = Boolean(response?.state?.hasApiKey);
   sessionEndsAt = Number(response?.state?.sessionEndsAt) || 0;
+  defaultSessionMinutes = Number(response?.state?.minutes) || 10;
+  applySystemFeedTheme();
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", applySystemFeedTheme);
 
   document.documentElement.classList.remove("calm-x-booting");
   document.documentElement.classList.toggle("calm-x-active", filteringEnabled);
 
-  if (response?.state?.sessionBlocked) showSessionEnded();
+  const live = sessionEndsAt > Date.now();
+  if (live) {
+    runTimer();
+    startVisitPing();
+  } else {
+    showIntentGate({
+      finished: Boolean(response?.state?.sessionBlocked),
+      stats: response?.state?.visitStats
+    });
+  }
 
   if (filteringEnabled) scan(document);
 
@@ -101,8 +147,12 @@ async function start() {
     subtree: true
   });
 
-  runTimer();
-  console.info("[CalmFeed] content script v0.5.6 active — decision cache", decisionCache.size);
+  console.info("[Calmfeed] content script v0.6.5 active — decision cache", decisionCache.size);
+}
+
+function applySystemFeedTheme() {
+  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.calmfeedTheme = dark ? "dark" : "light";
 }
 
 function loadDecisionCache() {
@@ -114,8 +164,21 @@ function loadDecisionCache() {
     for (const entry of entries) {
       if (!Array.isArray(entry) || entry.length < 2) continue;
       const [postId, value] = entry;
-      if (typeof postId === "string" && postId && value && typeof value.hide === "boolean") {
-        decisionCache.set(postId, { hide: value.hide });
+      if (typeof postId !== "string" || !postId || !value) continue;
+      // Legacy cache used { hide: boolean }; map to SHOW | BLUR.
+      const decision =
+        value.decision === "SHOW" || value.decision === "BLUR" || value.decision === "HIDE"
+          ? value.decision
+          : value.hide === true
+            ? "BLUR"
+            : value.hide === false
+              ? "SHOW"
+              : null;
+      if (decision) {
+        decisionCache.set(postId, {
+          decision,
+          reason: typeof value.reason === "string" ? value.reason : ""
+        });
       }
     }
   } catch {
@@ -123,9 +186,18 @@ function loadDecisionCache() {
   }
 }
 
-function rememberDecision(postId, hide) {
+function rememberDecision(postId, decision, reason = "") {
   if (!postId) return;
-  decisionCache.set(postId, { hide: Boolean(hide) });
+  const normalized =
+    decision === "BLUR" || decision === "HIDE" || decision === "SHOW"
+      ? decision
+      : decision === true
+        ? "BLUR"
+        : "SHOW";
+  decisionCache.set(postId, {
+    decision: normalized,
+    reason: normalized === "SHOW" ? "" : String(reason || "")
+  });
 
   while (decisionCache.size > MAX_DECISION_CACHE) {
     const oldest = decisionCache.keys().next().value;
@@ -178,13 +250,13 @@ function injectStyles() {
 
   const style = document.createElement("style");
   style.id = "calmfeed-styles";
-  style.setAttribute("data-calmfeed", "0.5.6");
-  style.textContent = getCalmFeedStyles();
+  style.setAttribute("data-calmfeed", "0.6.5");
+  style.textContent = getCalmfeedStyles();
   (document.documentElement || document.head).append(style);
   stylesInjected = true;
 }
 
-function getCalmFeedStyles() {
+function getCalmfeedStyles() {
   const fraunces600 = chrome.runtime.getURL("fonts/fraunces-600.woff2");
   const fraunces700 = chrome.runtime.getURL("fonts/fraunces-700.woff2");
   const bricolage400 = chrome.runtime.getURL("fonts/bricolage-grotesque-400.woff2");
@@ -203,19 +275,38 @@ function getCalmFeedStyles() {
 html.calm-x-booting article[data-testid="tweet"]{visibility:hidden!important}
 html.calm-x-active{overflow-anchor:auto}
 
-/* Pending: keep natural tweet height (overlay only) so scroll doesn't jump. */
-article[data-testid="tweet"][data-calm-x-state="pending"]{
+/* Pending + blurred: soft blur in place. Pending = blur only. */
+article[data-testid="tweet"][data-calm-x-state="pending"],
+article[data-testid="tweet"][data-calm-x-state="blurred"]{
   position:relative!important;overflow:hidden!important
 }
-article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card){
-  visibility:hidden!important;pointer-events:none!important
+article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card),
+article[data-testid="tweet"][data-calm-x-state="blurred"]>:not(.calm-x-card){
+  filter:blur(16px)!important;-webkit-filter:blur(16px)!important;
+  pointer-events:none!important;user-select:none!important;
+  transition:filter .35s ease!important
 }
-article[data-testid="tweet"][data-calm-x-state="pending"]>.calm-x-card{
-  position:absolute!important;inset:0!important;z-index:5!important;
-  min-height:100%!important;height:100%!important;border-bottom:none!important
+article[data-testid="tweet"][data-calm-x-state="pending"]>.calm-x-card{display:none!important}
+article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card{
+  position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;
+  inset:auto 0 0 0!important;z-index:5!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;
+  width:100%!important;max-width:100%!important;height:auto!important;min-height:56px!important;
+  margin:0!important;padding:12px 16px!important;border:none!important;border-top:1px solid #e4e3e0!important;border-radius:0!important;
+  background:rgba(250,250,250,.96)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;
+  pointer-events:auto!important;animation:calmfeed-veil-in .35s ease both!important
+}
+article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card .calm-x-card-title{
+  text-shadow:none!important
+}
+article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card .calm-x-card-copy{
+  flex:1 1 auto!important;min-width:0!important;text-align:left!important
+}
+article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card button{
+  flex-shrink:0!important;margin-left:auto!important
 }
 
-/* Hidden: collapse to compact shell. */
+/* Hard hide: only when user settings explicitly remove a post. */
 article[data-testid="tweet"][data-calm-x-state="hidden"]{
   display:block!important;position:relative!important;overflow:hidden!important;
   min-height:0!important;height:auto!important;padding:0!important;margin:0!important;
@@ -230,70 +321,59 @@ article[data-testid="tweet"][data-calm-x-state="hidden"]>.calm-x-card{
   position:relative!important;inset:auto!important;height:auto!important;min-height:92px!important
 }
 
-.calm-x-card{
-  box-sizing:border-box!important;display:flex!important;align-items:center!important;
-  justify-content:space-between!important;gap:14px!important;width:100%!important;
-  min-height:92px!important;margin:0!important;padding:16px!important;
-  border:none!important;border-bottom:1px solid #e4e3e0!important;border-radius:0!important;
-  color:#141413!important;background:#f3f2f0!important;
-  font-family:"Bricolage Grotesque",system-ui,-apple-system,sans-serif!important;
-  cursor:default!important;-webkit-font-smoothing:antialiased!important
+@keyframes calmfeed-veil-in{from{opacity:0}to{opacity:1}}
+@keyframes calmfeed-panel-in{
+  from{opacity:0;transform:translateY(8px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
 }
-.calm-x-card-mark{
-  box-sizing:border-box!important;display:flex!important;align-items:center!important;
-  justify-content:center!important;flex-shrink:0!important;width:36px!important;height:36px!important;
-  border-radius:10px!important;background:#141413!important;color:#fafafa!important;
-  font-family:"Fraunces",Georgia,serif!important;font-size:15px!important;font-weight:600!important;
-  letter-spacing:-.03em!important;line-height:1!important
+@keyframes calmfeed-breathe{
+  0%,100%{box-shadow:0 12px 40px rgba(20,20,19,.1)}
+  50%{box-shadow:0 14px 44px rgba(20,20,19,.14)}
 }
-.calm-x-card[data-state="pending"] .calm-x-card-mark{
-  background:#73736e!important;animation:calm-x-pulse 1.2s ease-in-out infinite!important
+@keyframes calmfeed-timer-in{
+  from{opacity:0;transform:translate3d(-8px,-6px,0) scale(.96)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
 }
-.calm-x-card-copy{display:grid!important;gap:2px!important;min-width:0!important;flex:1 1 auto!important}
-.calm-x-card-kicker{
-  display:block!important;color:#73736e!important;
-  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
-  font-size:11px!important;font-weight:600!important;letter-spacing:.08em!important;
-  text-transform:uppercase!important;line-height:1.2!important
+@keyframes calmfeed-timer-tick{
+  0%{opacity:.55;transform:translateY(2px)}
+  100%{opacity:1;transform:translateY(0)}
 }
-.calm-x-card-title{
-  display:block!important;color:#141413!important;
-  font-family:"Fraunces",Georgia,serif!important;font-size:17px!important;font-weight:600!important;
-  letter-spacing:-.03em!important;line-height:1.15!important
+@keyframes calmfeed-timer-warn{
+  0%,100%{box-shadow:0 10px 30px rgba(179,58,50,.12)}
+  50%{box-shadow:0 12px 34px rgba(179,58,50,.22)}
 }
-.calm-x-card-note{
-  display:block!important;color:#73736e!important;
-  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
-  font-size:13px!important;font-weight:400!important;letter-spacing:-.01em!important;line-height:1.35!important
-}
-.calm-x-card button{
-  box-sizing:border-box!important;flex-shrink:0!important;display:inline-flex!important;
-  align-items:center!important;justify-content:center!important;min-height:36px!important;
-  margin:0!important;padding:8px 14px!important;border:1px solid #141413!important;
-  border-radius:10px!important;color:#141413!important;background:#fafafa!important;
-  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;font-size:13px!important;
-  font-weight:600!important;letter-spacing:-.01em!important;line-height:1!important;cursor:pointer!important
-}
-.calm-x-card button:hover{background:#eeedeb!important}
 .calm-x-timer{
-  box-sizing:border-box!important;position:fixed!important;right:18px!important;bottom:18px!important;
-  z-index:2147483646!important;min-width:64px!important;padding:11px 13px!important;
-  border:1px solid #e4e3e0!important;border-radius:12px!important;color:#141413!important;
-  background:#fafafa!important;font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  box-sizing:border-box!important;position:fixed!important;left:18px!important;top:18px!important;
+  right:auto!important;bottom:auto!important;z-index:2147483646!important;
+  min-width:72px!important;padding:11px 14px!important;
+  border:1px solid #e4e3e0!important;border-radius:14px!important;color:#141413!important;
+  background:rgba(250,250,250,.92)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
   font-size:14px!important;font-weight:600!important;letter-spacing:-.02em!important;
-  line-height:1!important;text-align:center!important;box-shadow:0 10px 30px rgba(20,20,19,.1)!important;
-  pointer-events:none!important
+  line-height:1!important;text-align:center!important;font-variant-numeric:tabular-nums!important;
+  box-shadow:0 10px 30px rgba(20,20,19,.1)!important;pointer-events:none!important;
+  animation:calmfeed-timer-in .45s cubic-bezier(.22,1,.36,1) both!important
+}
+.calm-x-timer[data-tick="1"]{animation:calmfeed-timer-tick .28s ease!important}
+.calm-x-timer[data-warn="true"]{
+  border-color:#b33a32!important;color:#b33a32!important;
+  animation:calmfeed-timer-warn 1.8s ease-in-out infinite!important
+}
+.calm-x-timer[data-warn="true"][data-tick="1"]{
+  animation:calmfeed-timer-tick .28s ease,calmfeed-timer-warn 1.8s ease-in-out infinite!important
 }
 .calm-x-overlay{
   box-sizing:border-box!important;position:fixed!important;inset:0!important;z-index:2147483647!important;
   display:grid!important;place-items:center!important;padding:24px!important;background:#f3f2f0!important;
-  color:#141413!important;font-family:"Bricolage Grotesque",system-ui,sans-serif!important
+  color:#141413!important;font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  animation:calmfeed-veil-in .4s ease both!important
 }
 .calm-x-end-panel{
   box-sizing:border-box!important;width:min(460px,100%)!important;border-radius:18px!important;
   border:1px solid #e4e3e0!important;padding:32px 28px!important;background:#fafafa!important;
   box-shadow:0 20px 50px rgba(20,20,19,.08)!important;
-  font-family:"Bricolage Grotesque",system-ui,sans-serif!important
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  animation:calmfeed-panel-in .5s cubic-bezier(.22,1,.36,1) both!important
 }
 .calm-x-eyebrow{
   display:block!important;margin:0 0 22px!important;font-family:"Fraunces",Georgia,serif!important;
@@ -309,9 +389,62 @@ article[data-testid="tweet"][data-calm-x-state="hidden"]>.calm-x-card{
   font-family:"Bricolage Grotesque",system-ui,sans-serif!important;font-size:15.5px!important;
   font-weight:400!important;line-height:1.5!important;letter-spacing:-.01em!important
 }
-@keyframes calm-x-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.calm-x-intent-stats{margin-top:10px!important}
+.calm-x-intent-label{
+  display:block!important;margin:22px 0 8px!important;color:#73736e!important;
+  font-size:12px!important;font-weight:600!important;letter-spacing:-.01em!important
+}
+.calm-x-intent-input,.calm-x-intent-minutes{
+  box-sizing:border-box!important;width:100%!important;border:1px solid #e4e3e0!important;
+  border-radius:10px!important;padding:12px 14px!important;color:#141413!important;background:#fff!important;
+  font:500 15px/1.4 "Bricolage Grotesque",system-ui,sans-serif!important;outline:none!important;resize:vertical!important
+}
+.calm-x-intent-minutes{width:96px!important;resize:none!important}
+.calm-x-intent-row{display:flex!important;align-items:center!important;gap:12px!important;margin-top:4px!important}
+.calm-x-intent-row .calm-x-intent-label{margin:0!important}
+.calm-x-intent-error{margin:12px 0 0!important;color:#b33a32!important;font-size:13px!important;font-weight:500!important}
+.calm-x-intent-start{
+  display:block!important;width:100%!important;margin-top:18px!important;min-height:48px!important;
+  border:1px solid #141413!important;border-radius:10px!important;padding:12px 16px!important;
+  color:#f3f2f0!important;background:#141413!important;
+  font:600 15px/1 "Bricolage Grotesque",system-ui,sans-serif!important;cursor:pointer!important
+}
+.calm-x-intent-start:disabled{opacity:.5!important;cursor:wait!important}
+html[data-calmfeed-theme="dark"] .calm-x-intent-input,
+html[data-calmfeed-theme="dark"] .calm-x-intent-minutes{
+  border-color:#2e2e2c!important;color:#f0efed!important;background:#141413!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-intent-start{
+  border-color:#f0efed!important;color:#141413!important;background:#f0efed!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-intent-label,
+html[data-calmfeed-theme="dark"] .calm-x-intent-stats{color:#a1a09a!important}
+html[data-calmfeed-theme="dark"] article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card{
+  background:rgba(28,28,27,.96)!important;border-top-color:#2e2e2c!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-card-title{color:#f0efed!important}
+html[data-calmfeed-theme="dark"] .calm-x-card button{
+  border-color:#f0efed!important;color:#f0efed!important;background:rgba(28,28,27,.92)!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-card[data-state="hidden"]{
+  background:#1c1c1b!important;color:#f0efed!important;border-bottom-color:#2e2e2c!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-timer{
+  background:rgba(28,28,27,.92)!important;color:#f0efed!important;border-color:#2e2e2c!important
+}
+html[data-calmfeed-theme="dark"] .calm-x-overlay{background:#141413!important;color:#f0efed!important}
+html[data-calmfeed-theme="dark"] .calm-x-end-panel{background:#1c1c1b!important;border-color:#2e2e2c!important}
+html[data-calmfeed-theme="dark"] .calm-x-eyebrow,
+html[data-calmfeed-theme="dark"] .calm-x-end-panel h1{color:#f0efed!important}
+html[data-calmfeed-theme="dark"] .calm-x-end-panel p{color:#a1a09a!important}
 @media (prefers-reduced-motion:reduce){
-  .calm-x-card[data-state="pending"] .calm-x-card-mark{animation:none!important}
+  article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card),
+  article[data-testid="tweet"][data-calm-x-state="blurred"]>:not(.calm-x-card){transition:none!important}
+  article[data-testid="tweet"][data-calm-x-state="pending"]>.calm-x-card,
+  article[data-testid="tweet"][data-calm-x-state="blurred"]>.calm-x-card,
+  .calm-x-card-panel,.calm-x-card[data-state="pending"] .calm-x-card-panel,
+  .calm-x-card button,.calm-x-timer,.calm-x-timer[data-warn="true"],.calm-x-timer[data-tick="1"],
+  .calm-x-overlay,.calm-x-end-panel{animation:none!important;transition:none!important;transform:none!important}
 }
 `;
 }
@@ -332,11 +465,11 @@ function observe(article) {
   // no "Checking post" flash, no height collapse, no re-fetch.
   if (cached) {
     article.dataset.calmXQueued = "true";
-    if (cached.hide) {
-      showHidden(article, { postId, fromCache: true });
-    } else {
-      showArticle(article, { postId, fromCache: true });
-    }
+    applyDecision(article, cached.decision, {
+      postId,
+      fromCache: true,
+      reason: cached.reason
+    });
     return;
   }
 
@@ -351,8 +484,11 @@ function enqueue(article) {
   const cached = getCachedDecision(postId);
   if (cached) {
     article.dataset.calmXQueued = "true";
-    if (cached.hide) showHidden(article, { postId, fromCache: true });
-    else showArticle(article, { postId, fromCache: true });
+    applyDecision(article, cached.decision, {
+      postId,
+      fromCache: true,
+      reason: cached.reason
+    });
     return;
   }
 
@@ -397,23 +533,19 @@ async function flushBatches() {
           articleByRequestId.delete(post.requestId);
           if (!article?.isConnected) continue;
 
-          const hide = Boolean(response?.ok && result?.hide);
-          rememberDecision(post.postId, hide);
-
-          if (hide) {
-            showHidden(article, { postId: post.postId });
-          } else {
-            showArticle(article, { postId: post.postId });
-          }
+          // AI filters → BLUR (not hard hide). SHOW is default / fail-open.
+          const decision = response?.ok && result?.hide ? "BLUR" : "SHOW";
+          const reason = decision === "BLUR" ? String(result?.reason || "") : "";
+          rememberDecision(post.postId, decision, reason);
+          applyDecision(article, decision, { postId: post.postId, reason });
         }
       } catch {
         for (const post of posts) {
           const article = articleByRequestId.get(post.requestId);
           articleByRequestId.delete(post.requestId);
           if (!article?.isConnected) continue;
-          // Fail open — don't cache failures as "safe forever" for empty errors,
-          // but allow the post through without sticky pending.
-          showArticle(article, { postId: post.postId });
+          rememberDecision(post.postId, "SHOW");
+          applyDecision(article, "SHOW", { postId: post.postId });
         }
       }
 
@@ -601,19 +733,54 @@ async function blobToBase64(blob) {
 }
 
 function showPending(article) {
-  if (article.dataset.calmXState === "pending" && getCard(article)) return;
-  if (article.dataset.calmXState === "hidden" || article.dataset.calmXState === "shown") return;
+  if (article.dataset.calmXState === "pending") return;
+  if (
+    article.dataset.calmXState === "blurred" ||
+    article.dataset.calmXState === "hidden" ||
+    article.dataset.calmXState === "shown"
+  ) {
+    return;
+  }
 
-  // Height-preserving: absolute overlay, tweet layout stays put.
   article.dataset.calmXState = "pending";
   article.setAttribute("aria-busy", "true");
-  mountCard(article, {
-    state: "pending",
-    title: "Checking post",
-    note: "It will appear if it looks safe to show."
+  getCard(article)?.remove();
+}
+
+function applyDecision(article, decision, options = {}) {
+  if (decision === "BLUR") {
+    showBlurred(article, options);
+    return;
+  }
+  if (decision === "HIDE") {
+    showHidden(article, options);
+    return;
+  }
+  showArticle(article, options);
+}
+
+/** Soft filter: reason left, Show right — no white plate. */
+function showBlurred(article, options = {}) {
+  const postId = options.postId || extractPostId(article);
+  const reason = String(options.reason || "").trim() || "Stressful content";
+
+  withScrollAnchor(article, () => {
+    article.dataset.calmXState = "blurred";
+    article.removeAttribute("aria-busy");
+
+    mountCard(article, {
+      state: "blurred",
+      title: reason,
+      buttonLabel: "Show",
+      onClick: () => {
+        rememberDecision(postId, "SHOW");
+        showArticle(article, { postId });
+      }
+    });
   });
 }
 
+/** Hard remove — only for explicit user settings. */
 function showHidden(article, options = {}) {
   const postId = options.postId || extractPostId(article);
 
@@ -623,12 +790,10 @@ function showHidden(article, options = {}) {
 
     mountCard(article, {
       state: "hidden",
-      title: "Post hidden",
-      note: "Likely negative, hostile, or graphic.",
-      buttonLabel: "Show anyway",
+      title: "Hidden",
+      buttonLabel: "Show",
       onClick: () => {
-        // Manual reveal — remember as shown so remounts stay open.
-        rememberDecision(postId, false);
+        rememberDecision(postId, "SHOW");
         showArticle(article, { postId });
       }
     });
@@ -656,58 +821,52 @@ function mountCard(article, options) {
   return next;
 }
 
-function createCard({ state, title, note, buttonLabel, onClick }) {
-  // Inline styles as a hard fallback so X CSS / stale content.css cannot hide updates.
+function createCard({ state, title, buttonLabel, onClick }) {
   const card = document.createElement("div");
   card.className = CARD_CLASS;
-  card.dataset.state = state || "pending";
-  card.dataset.calmfeedVersion = "0.5.6";
+  card.dataset.state = state || "blurred";
+  card.dataset.calmfeedVersion = "0.6.5";
   card.setAttribute("role", "status");
-  const isPending = state === "pending";
+  const isOverlay = state === "blurred";
+  const dark = document.documentElement.dataset.calmfeedTheme === "dark";
+  const ink = dark ? "#f0efed" : "#141413";
+  const surface = isOverlay
+    ? dark
+      ? "rgba(28, 28, 27, 0.96)"
+      : "rgba(250, 250, 250, 0.96)"
+    : dark
+      ? "#1c1c1b"
+      : "#f3f2f0";
+  const buttonBg = dark ? "#1c1c1b" : "#ffffff";
+  const line = dark ? "#2e2e2c" : "#e4e3e0";
+
   Object.assign(card.style, {
     boxSizing: "border-box",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "14px",
+    gap: "12px",
     width: "100%",
-    minHeight: isPending ? "100%" : "92px",
-    height: isPending ? "100%" : "auto",
+    maxWidth: "100%",
+    minHeight: isOverlay ? "56px" : "72px",
     margin: "0",
-    padding: "16px",
+    padding: isOverlay ? "12px 16px" : "14px 16px",
     border: "none",
-    borderBottom: isPending ? "none" : "1px solid #e4e3e0",
-    borderRadius: "0",
-    color: "#141413",
-    background: isPending ? "rgba(243, 242, 240, 0.96)" : "#f3f2f0",
+    borderTop: isOverlay ? `1px solid ${line}` : "none",
+    borderBottom: isOverlay ? "none" : `1px solid ${line}`,
+    color: ink,
+    background: surface,
+    backdropFilter: isOverlay ? "blur(12px)" : "none",
+    WebkitBackdropFilter: isOverlay ? "blur(12px)" : "none",
     fontFamily: '"Bricolage Grotesque", system-ui, -apple-system, sans-serif',
-    cursor: "default",
-    WebkitFontSmoothing: "antialiased",
-    position: isPending ? "absolute" : "relative",
-    inset: isPending ? "0" : "auto",
-    zIndex: isPending ? "5" : "auto"
-  });
-
-  const mark = document.createElement("div");
-  mark.className = "calm-x-card-mark";
-  mark.setAttribute("aria-hidden", "true");
-  mark.textContent = "C";
-  Object.assign(mark.style, {
-    boxSizing: "border-box",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: "0",
-    width: "36px",
-    height: "36px",
-    borderRadius: "10px",
-    background: state === "pending" ? "#73736e" : "#141413",
-    color: "#fafafa",
-    fontFamily: '"Fraunces", Georgia, serif',
-    fontSize: "15px",
-    fontWeight: "600",
-    letterSpacing: "-0.03em",
-    lineHeight: "1"
+    position: isOverlay ? "absolute" : "relative",
+    left: isOverlay ? "0" : "auto",
+    right: isOverlay ? "0" : "auto",
+    bottom: isOverlay ? "0" : "auto",
+    top: isOverlay ? "auto" : "auto",
+    zIndex: isOverlay ? "5" : "auto",
+    pointerEvents: "auto",
+    WebkitFontSmoothing: "antialiased"
   });
 
   const copy = document.createElement("div");
@@ -716,51 +875,31 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
     display: "grid",
     gap: "2px",
     minWidth: "0",
-    flex: "1 1 auto"
+    flex: "1 1 auto",
+    textAlign: "left"
   });
 
-  const kicker = document.createElement("span");
-  kicker.className = "calm-x-card-kicker";
-  kicker.textContent = "CalmFeed";
-  Object.assign(kicker.style, {
-    display: "block",
-    color: "#73736e",
-    fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
-    fontSize: "11px",
-    fontWeight: "600",
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    lineHeight: "1.2"
-  });
+  if (title) {
+    const heading = document.createElement("strong");
+    heading.className = "calm-x-card-title";
+    heading.textContent = title;
+    Object.assign(heading.style, {
+      display: "block",
+      color: ink,
+      fontFamily: '"Fraunces", Georgia, serif',
+      fontSize: "16px",
+      fontWeight: "600",
+      letterSpacing: "-0.03em",
+      lineHeight: "1.2",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      textShadow: "none"
+    });
+    copy.append(heading);
+  }
 
-  const heading = document.createElement("strong");
-  heading.className = "calm-x-card-title";
-  heading.textContent = title;
-  Object.assign(heading.style, {
-    display: "block",
-    color: "#141413",
-    fontFamily: '"Fraunces", Georgia, serif',
-    fontSize: "17px",
-    fontWeight: "600",
-    letterSpacing: "-0.03em",
-    lineHeight: "1.15"
-  });
-
-  const description = document.createElement("span");
-  description.className = "calm-x-card-note";
-  description.textContent = note;
-  Object.assign(description.style, {
-    display: "block",
-    color: "#73736e",
-    fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
-    fontSize: "13px",
-    fontWeight: "400",
-    letterSpacing: "-0.01em",
-    lineHeight: "1.35"
-  });
-
-  copy.append(kicker, heading, description);
-  card.append(mark, copy);
+  card.append(copy);
 
   if (buttonLabel && onClick) {
     const button = document.createElement("button");
@@ -772,18 +911,18 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "36px",
+      minHeight: "34px",
       margin: "0",
-      padding: "8px 14px",
-      border: "1px solid #141413",
-      borderRadius: "10px",
-      color: "#141413",
-      background: "#fafafa",
+      marginLeft: "auto",
+      padding: "8px 16px",
+      border: `1px solid ${ink}`,
+      borderRadius: "999px",
+      color: ink,
+      background: buttonBg,
       fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
       fontSize: "13px",
       fontWeight: "600",
       letterSpacing: "-0.01em",
-      lineHeight: "1",
       cursor: "pointer"
     });
     button.addEventListener("click", event => {
@@ -825,8 +964,9 @@ function runTimer() {
 
     if (remaining <= 0) {
       sessionEndsAt = 0;
+      stopVisitPing();
       removeTimerBadge();
-      showSessionEnded();
+      showIntentGateWithStats(true);
       chrome.runtime.sendMessage({ type: "markSessionEnded" }).catch(() => undefined);
       clearInterval(timerId);
       return;
@@ -840,6 +980,7 @@ function runTimer() {
 }
 
 function showTimerBadge(milliseconds) {
+  const created = !timerBadge;
   if (!timerBadge) {
     timerBadge = document.createElement("div");
     timerBadge.className = "calm-x-timer";
@@ -850,7 +991,20 @@ function showTimerBadge(milliseconds) {
   const totalSeconds = Math.ceil(milliseconds / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = String(totalSeconds % 60).padStart(2, "0");
-  timerBadge.textContent = `${minutes}:${seconds}`;
+  const nextText = `${minutes}:${seconds}`;
+  const warn = milliseconds <= 2 * 60_000;
+
+  timerBadge.dataset.warn = warn ? "true" : "false";
+
+  if (!created && timerBadge.textContent !== nextText) {
+    timerBadge.dataset.tick = "1";
+    window.clearTimeout(showTimerBadge._tickTimer);
+    showTimerBadge._tickTimer = window.setTimeout(() => {
+      if (timerBadge) timerBadge.dataset.tick = "0";
+    }, 280);
+  }
+
+  timerBadge.textContent = nextText;
 }
 
 function removeTimerBadge() {
@@ -858,33 +1012,171 @@ function removeTimerBadge() {
   timerBadge = null;
 }
 
-function showSessionEnded() {
-  if (sessionOverlay) return;
+function showIntentGateWithStats(finished) {
+  chrome.runtime
+    .sendMessage({ type: "getState" })
+    .then(response => {
+      showIntentGate({
+        finished,
+        stats: response?.state?.visitStats
+      });
+    })
+    .catch(() => showIntentGate({ finished }));
+}
+
+function showIntentGate(options = {}) {
+  const finished = options.finished === true;
+  if (sessionOverlay) {
+    sessionOverlay.remove();
+    sessionOverlay = null;
+  }
 
   sessionOverlay = document.createElement("div");
   sessionOverlay.className = "calm-x-overlay";
+  sessionOverlay.setAttribute("role", "dialog");
+  sessionOverlay.setAttribute("aria-modal", "true");
+  sessionOverlay.setAttribute(
+    "aria-labelledby",
+    "calmfeed-intent-title"
+  );
 
   const panel = document.createElement("section");
-  panel.className = "calm-x-end-panel";
-
-  const eyebrow = document.createElement("span");
-  eyebrow.className = "calm-x-eyebrow";
-  eyebrow.textContent = "CalmFeed";
+  panel.className = "calm-x-end-panel calm-x-intent-panel";
 
   const title = document.createElement("h1");
-  title.textContent = "Session finished.";
+  title.id = "calmfeed-intent-title";
+  title.textContent = finished ? "Time’s up." : "Why are you here?";
 
   const note = document.createElement("p");
-  note.textContent = "You came here for a reason. You can close X now, or start a new session from the extension.";
+  note.textContent = finished
+    ? "Session’s done. If you’re coming back, write a reason first."
+    : "One sentence. Then you get a timed session.";
 
-  panel.append(eyebrow, title, note);
+  if (options.stats?.todayMs > 0) {
+    const stats = document.createElement("p");
+    stats.className = "calm-x-intent-stats";
+    stats.textContent = `Today on X: ${formatDuration(options.stats.todayMs)}`;
+    panel.append(title, note, stats);
+  } else {
+    panel.append(title, note);
+  }
+
+  const reasonLabel = document.createElement("label");
+  reasonLabel.className = "calm-x-intent-label";
+  reasonLabel.htmlFor = "calmfeed-intent-reason";
+  reasonLabel.textContent = "Reason";
+
+  const reasonInput = document.createElement("textarea");
+  reasonInput.id = "calmfeed-intent-reason";
+  reasonInput.className = "calm-x-intent-input";
+  reasonInput.rows = 2;
+  reasonInput.maxLength = 200;
+  reasonInput.placeholder = "Catch up on replies, check one link, leave…";
+  reasonInput.autocomplete = "off";
+
+  const minutesRow = document.createElement("div");
+  minutesRow.className = "calm-x-intent-row";
+
+  const minutesLabel = document.createElement("label");
+  minutesLabel.className = "calm-x-intent-label";
+  minutesLabel.htmlFor = "calmfeed-intent-minutes";
+  minutesLabel.textContent = "Minutes";
+
+  const minutesInput = document.createElement("input");
+  minutesInput.id = "calmfeed-intent-minutes";
+  minutesInput.className = "calm-x-intent-minutes";
+  minutesInput.type = "number";
+  minutesInput.min = "1";
+  minutesInput.max = "120";
+  minutesInput.value = String(defaultSessionMinutes || 10);
+
+  minutesRow.append(minutesLabel, minutesInput);
+
+  const error = document.createElement("p");
+  error.className = "calm-x-intent-error";
+  error.hidden = true;
+
+  const startBtn = document.createElement("button");
+  startBtn.type = "button";
+  startBtn.className = "calm-x-intent-start";
+  startBtn.textContent = finished ? "Start another session" : "Start session";
+
+  const submit = async () => {
+    const reason = reasonInput.value.trim();
+    if (!reason) {
+      error.hidden = false;
+      error.textContent = "Write why you’re opening X.";
+      reasonInput.focus();
+      return;
+    }
+
+    startBtn.disabled = true;
+    error.hidden = true;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "startSession",
+        reason,
+        minutes: minutesInput.value
+      });
+      if (!response?.ok) throw new Error(response?.error || "Could not start.");
+      // reloadXTabs will refresh; keep overlay until then
+    } catch (err) {
+      error.hidden = false;
+      error.textContent = err?.message || "Could not start.";
+      startBtn.disabled = false;
+    }
+  };
+
+  startBtn.addEventListener("click", () => {
+    submit().catch(() => undefined);
+  });
+
+  reasonInput.addEventListener("keydown", event => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      submit().catch(() => undefined);
+    }
+  });
+
+  panel.append(reasonLabel, reasonInput, minutesRow, error, startBtn);
   sessionOverlay.append(panel);
   document.documentElement.append(sessionOverlay);
+  window.setTimeout(() => reasonInput.focus(), 50);
 }
 
-function hideSessionEnded() {
+function hideSessionOverlay() {
   sessionOverlay?.remove();
   sessionOverlay = null;
+}
+
+function startVisitPing() {
+  stopVisitPing();
+  visitPingId = window.setInterval(() => {
+    if (!(sessionEndsAt > Date.now())) {
+      stopVisitPing();
+      return;
+    }
+    if (document.visibilityState !== "visible") return;
+    chrome.runtime
+      .sendMessage({ type: "pingVisit", ms: 15_000 })
+      .catch(() => undefined);
+  }, 15_000);
+}
+
+function stopVisitPing() {
+  if (visitPingId) {
+    window.clearInterval(visitPingId);
+    visitPingId = 0;
+  }
+}
+
+function formatDuration(ms) {
+  const totalMinutes = Math.max(0, Math.round(Number(ms) / 60_000));
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
 }
 
 function sleep(milliseconds) {
