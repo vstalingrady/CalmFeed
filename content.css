@@ -1,10 +1,9 @@
-/* CalmFeed on-page chrome — hide shells + session UI */
+/* CalmFeed on-page chrome — warm stone gray (Cursor / Grok-adjacent) */
 
 html.calm-x-booting article[data-testid="tweet"] {
   visibility: hidden !important;
 }
 
-/* Collapse original tweet chrome while checking / hidden */
 article[data-testid="tweet"][data-calm-x-state="pending"],
 article[data-testid="tweet"][data-calm-x-state="hidden"] {
   display: block !important;
@@ -31,7 +30,6 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   border: none !important;
 }
 
-/* Full-width feed placeholder — escapes X stylesheet pollution */
 .calm-x-card {
   all: initial;
   box-sizing: border-box !important;
@@ -44,10 +42,10 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   margin: 0 !important;
   padding: 18px 16px !important;
   border: none !important;
-  border-bottom: 1px solid rgb(212, 205, 192) !important;
+  border-bottom: 1px solid #e4e3e0 !important;
   border-radius: 0 !important;
-  color: rgb(28, 25, 21) !important;
-  background: rgb(250, 247, 240) !important;
+  color: #141413 !important;
+  background: #f3f2f0 !important;
   font-family: "Bricolage Grotesque", system-ui, -apple-system, sans-serif !important;
   cursor: default !important;
   -webkit-font-smoothing: antialiased !important;
@@ -66,9 +64,9 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   flex-shrink: 0 !important;
   width: 36px !important;
   height: 36px !important;
-  border-radius: 11px !important;
-  background: rgb(28, 25, 21) !important;
-  color: rgb(250, 247, 240) !important;
+  border-radius: 10px !important;
+  background: #141413 !important;
+  color: #fafafa !important;
   font-family: "Fraunces", Georgia, serif !important;
   font-size: 15px !important;
   font-weight: 600 !important;
@@ -77,7 +75,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 }
 
 .calm-x-card[data-state="pending"] .calm-x-card-mark {
-  background: rgb(111, 104, 96) !important;
+  background: #73736e !important;
   animation: calm-x-pulse 1.2s ease-in-out infinite !important;
 }
 
@@ -90,7 +88,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 
 .calm-x-card-kicker {
   display: block !important;
-  color: rgb(111, 104, 96) !important;
+  color: #73736e !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -101,7 +99,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 
 .calm-x-card-title {
   display: block !important;
-  color: rgb(28, 25, 21) !important;
+  color: #141413 !important;
   font-family: "Fraunces", Georgia, serif !important;
   font-size: 17px !important;
   font-weight: 600 !important;
@@ -111,7 +109,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 
 .calm-x-card-note {
   display: block !important;
-  color: rgb(111, 104, 96) !important;
+  color: #73736e !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   font-size: 13px !important;
   font-weight: 400 !important;
@@ -128,9 +126,9 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   justify-content: center !important;
   min-height: 36px !important;
   padding: 8px 14px !important;
-  border: 1px solid rgb(28, 25, 21) !important;
+  border: 1px solid #141413 !important;
   border-radius: 10px !important;
-  color: rgb(28, 25, 21) !important;
+  color: #141413 !important;
   background: transparent !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   font-size: 13px !important;
@@ -142,15 +140,14 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 }
 
 .calm-x-card button:hover {
-  background: rgb(232, 226, 214) !important;
+  background: #eeedeb !important;
 }
 
 .calm-x-card button:focus-visible {
-  outline: 2px solid rgb(28, 25, 21) !important;
+  outline: 2px solid #141413 !important;
   outline-offset: 2px !important;
 }
 
-/* Timer */
 .calm-x-timer {
   all: initial;
   box-sizing: border-box !important;
@@ -160,22 +157,21 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   z-index: 2147483646 !important;
   min-width: 64px !important;
   padding: 11px 13px !important;
-  border: 1px solid rgb(28, 25, 21) !important;
+  border: 1px solid #e4e3e0 !important;
   border-radius: 12px !important;
-  color: rgb(28, 25, 21) !important;
-  background: rgb(250, 247, 240) !important;
+  color: #141413 !important;
+  background: #fafafa !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   font-size: 14px !important;
   font-weight: 600 !important;
   letter-spacing: -0.02em !important;
   line-height: 1 !important;
   text-align: center !important;
-  box-shadow: 0 10px 30px rgb(28 25 21 / 0.12) !important;
+  box-shadow: 0 10px 30px rgb(20 20 19 / 0.1) !important;
   pointer-events: none !important;
   -webkit-font-smoothing: antialiased !important;
 }
 
-/* Session end */
 .calm-x-overlay {
   all: initial;
   box-sizing: border-box !important;
@@ -185,10 +181,8 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   display: grid !important;
   place-items: center !important;
   padding: 24px !important;
-  background:
-    radial-gradient(80% 60% at 20% 10%, rgb(255 252 245 / 0.55), transparent 50%),
-    rgb(235, 230, 219) !important;
-  color: rgb(28, 25, 21) !important;
+  background: #f3f2f0 !important;
+  color: #141413 !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   -webkit-font-smoothing: antialiased !important;
 }
@@ -196,11 +190,11 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
 .calm-x-end-panel {
   box-sizing: border-box !important;
   width: min(460px, 100%) !important;
-  border-radius: 22px !important;
-  border: 1px solid rgb(28, 25, 21) !important;
+  border-radius: 18px !important;
+  border: 1px solid #e4e3e0 !important;
   padding: 32px 28px !important;
-  background: rgb(250, 247, 240) !important;
-  box-shadow: 0 20px 50px rgb(28 25 21 / 0.08) !important;
+  background: #fafafa !important;
+  box-shadow: 0 20px 50px rgb(20 20 19 / 0.08) !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
 }
 
@@ -212,7 +206,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   font-weight: 600 !important;
   letter-spacing: -0.03em !important;
   line-height: 1 !important;
-  color: rgb(28, 25, 21) !important;
+  color: #141413 !important;
 }
 
 .calm-x-end-panel h1 {
@@ -225,7 +219,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   font-weight: 600 !important;
   line-height: 1.02 !important;
   letter-spacing: -0.04em !important;
-  color: rgb(28, 25, 21) !important;
+  color: #141413 !important;
 }
 
 .calm-x-end-panel p {
@@ -233,7 +227,7 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   max-width: 400px !important;
   margin: 0 !important;
   padding: 0 !important;
-  color: rgb(111, 104, 96) !important;
+  color: #73736e !important;
   font-family: "Bricolage Grotesque", system-ui, sans-serif !important;
   font-size: 15.5px !important;
   font-weight: 400 !important;
@@ -256,9 +250,64 @@ article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
   }
 }
 
-/* Dark X: keep CalmFeed paper as a calm island, slightly softer edge */
+/* Dark X feed: slightly deeper stone so cards still read as CalmFeed */
 @media (prefers-color-scheme: dark) {
   .calm-x-card {
-    border-bottom-color: rgb(60, 56, 50) !important;
+    background: #1c1c1b !important;
+    color: #f0efed !important;
+    border-bottom-color: #2e2e2c !important;
+  }
+
+  .calm-x-card-mark {
+    background: #f0efed !important;
+    color: #141413 !important;
+  }
+
+  .calm-x-card[data-state="pending"] .calm-x-card-mark {
+    background: #8a8984 !important;
+    color: #141413 !important;
+  }
+
+  .calm-x-card-kicker,
+  .calm-x-card-note {
+    color: #a1a09a !important;
+  }
+
+  .calm-x-card-title {
+    color: #f0efed !important;
+  }
+
+  .calm-x-card button {
+    border-color: #f0efed !important;
+    color: #f0efed !important;
+  }
+
+  .calm-x-card button:hover {
+    background: #2a2a28 !important;
+  }
+
+  .calm-x-timer {
+    background: #1c1c1b !important;
+    color: #f0efed !important;
+    border-color: #2e2e2c !important;
+  }
+
+  .calm-x-overlay {
+    background: #141413 !important;
+    color: #f0efed !important;
+  }
+
+  .calm-x-end-panel {
+    background: #1c1c1b !important;
+    border-color: #2e2e2c !important;
+  }
+
+  .calm-x-eyebrow,
+  .calm-x-end-panel h1 {
+    color: #f0efed !important;
+  }
+
+  .calm-x-end-panel p {
+    color: #a1a09a !important;
   }
 }
