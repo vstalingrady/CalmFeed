@@ -3,6 +3,7 @@ const articleByRequestId = new Map();
 const queue = [];
 const VIDEO_FRAME_MAX_DIMENSION = 1280;
 const VIDEO_FRAME_MAX_BYTES = 300_000;
+const CARD_CLASS = "calm-x-card";
 
 let filteringEnabled = false;
 let batchTimer = 0;
@@ -12,6 +13,7 @@ let sessionEndsAt = 0;
 let timerId = 0;
 let timerBadge = null;
 let sessionOverlay = null;
+let fontsInjected = false;
 
 const intersectionObserver = new IntersectionObserver(entries => {
   for (const entry of entries) {
@@ -74,6 +76,7 @@ start().catch(error => {
 
 async function start() {
   document.documentElement.classList.add("calm-x-booting");
+  injectFonts();
 
   const response = await chrome.runtime.sendMessage({ type: "getState" });
   filteringEnabled = Boolean(response?.state?.hasApiKey);
@@ -92,6 +95,71 @@ async function start() {
   });
 
   runTimer();
+}
+
+function injectFonts() {
+  if (fontsInjected || document.getElementById("calmfeed-fonts")) {
+    fontsInjected = true;
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "calmfeed-fonts";
+
+  const fraunces600 = chrome.runtime.getURL("fonts/fraunces-600.woff2");
+  const fraunces700 = chrome.runtime.getURL("fonts/fraunces-700.woff2");
+  const bricolage400 = chrome.runtime.getURL("fonts/bricolage-grotesque-400.woff2");
+  const bricolage500 = chrome.runtime.getURL("fonts/bricolage-grotesque-500.woff2");
+  const bricolage600 = chrome.runtime.getURL("fonts/bricolage-grotesque-600.woff2");
+  const bricolage700 = chrome.runtime.getURL("fonts/bricolage-grotesque-700.woff2");
+
+  style.textContent = `
+    @font-face {
+      font-family: "Fraunces";
+      src: url("${fraunces600}") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Fraunces";
+      src: url("${fraunces700}") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Bricolage Grotesque";
+      src: url("${bricolage400}") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Bricolage Grotesque";
+      src: url("${bricolage500}") format("woff2");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Bricolage Grotesque";
+      src: url("${bricolage600}") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Bricolage Grotesque";
+      src: url("${bricolage700}") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+  `;
+
+  (document.head || document.documentElement).append(style);
+  fontsInjected = true;
 }
 
 function scan(root) {
@@ -349,29 +417,29 @@ async function blobToBase64(blob) {
 }
 
 function showPending(article) {
-  if (article.dataset.calmXState) return;
+  if (article.dataset.calmXState === "pending" && getCard(article)) return;
+  if (article.dataset.calmXState === "hidden" || article.dataset.calmXState === "shown") return;
 
   article.dataset.calmXState = "pending";
   article.setAttribute("aria-busy", "true");
-  article.append(createCard({
+  mountCard(article, {
+    state: "pending",
     title: "Checking post",
     note: "It will appear if it looks safe to show."
-  }));
+  });
 }
 
 function showHidden(article) {
   article.dataset.calmXState = "hidden";
   article.removeAttribute("aria-busy");
 
-  const card = getCard(article);
-  if (!card) return;
-
-  card.replaceWith(createCard({
+  mountCard(article, {
+    state: "hidden",
     title: "Post hidden",
     note: "Likely negative, hostile, or graphic.",
-    buttonLabel: "Show",
+    buttonLabel: "Show anyway",
     onClick: () => showArticle(article)
-  }));
+  });
 }
 
 function showArticle(article) {
@@ -380,21 +448,47 @@ function showArticle(article) {
   getCard(article)?.remove();
 }
 
-function createCard({ title, note, buttonLabel, onClick }) {
+function mountCard(article, options) {
+  const next = createCard(options);
+  const existing = getCard(article);
+
+  if (existing) {
+    existing.replaceWith(next);
+  } else {
+    article.append(next);
+  }
+
+  return next;
+}
+
+function createCard({ state, title, note, buttonLabel, onClick }) {
   const card = document.createElement("div");
-  card.className = "calm-x-card";
+  card.className = CARD_CLASS;
+  card.dataset.state = state || "pending";
+  card.setAttribute("role", "status");
+
+  const mark = document.createElement("div");
+  mark.className = "calm-x-card-mark";
+  mark.setAttribute("aria-hidden", "true");
+  mark.textContent = "C";
 
   const copy = document.createElement("div");
   copy.className = "calm-x-card-copy";
 
+  const kicker = document.createElement("span");
+  kicker.className = "calm-x-card-kicker";
+  kicker.textContent = "CalmFeed";
+
   const heading = document.createElement("strong");
+  heading.className = "calm-x-card-title";
   heading.textContent = title;
 
   const description = document.createElement("span");
+  description.className = "calm-x-card-note";
   description.textContent = note;
 
-  copy.append(heading, description);
-  card.append(copy);
+  copy.append(kicker, heading, description);
+  card.append(mark, copy);
 
   if (buttonLabel && onClick) {
     const button = document.createElement("button");
@@ -408,11 +502,23 @@ function createCard({ title, note, buttonLabel, onClick }) {
     card.append(button);
   }
 
+  // Keep feed clicks from opening the underlying tweet while hidden.
+  card.addEventListener("click", event => {
+    if (event.target.closest("button")) return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
   return card;
 }
 
 function getCard(article) {
-  return [...article.children].find(child => child.classList?.contains("calm-x-card")) || null;
+  if (!article) return null;
+  return (
+    article.querySelector(`:scope > .${CARD_CLASS}`) ||
+    [...article.children].find(child => child.classList?.contains(CARD_CLASS)) ||
+    null
+  );
 }
 
 function runTimer() {
