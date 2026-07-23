@@ -13,7 +13,7 @@ let sessionEndsAt = 0;
 let timerId = 0;
 let timerBadge = null;
 let sessionOverlay = null;
-let fontsInjected = false;
+let stylesInjected = false;
 
 const intersectionObserver = new IntersectionObserver(entries => {
   for (const entry of entries) {
@@ -76,7 +76,7 @@ start().catch(error => {
 
 async function start() {
   document.documentElement.classList.add("calm-x-booting");
-  injectFonts();
+  injectStyles();
 
   const response = await chrome.runtime.sendMessage({ type: "getState" });
   filteringEnabled = Boolean(response?.state?.hasApiKey);
@@ -95,17 +95,22 @@ async function start() {
   });
 
   runTimer();
+  console.info("[CalmFeed] content script v0.5.5 active");
 }
 
-function injectFonts() {
-  if (fontsInjected || document.getElementById("calmfeed-fonts")) {
-    fontsInjected = true;
-    return;
-  }
+function injectStyles() {
+  const existing = document.getElementById("calmfeed-styles");
+  if (existing) existing.remove();
 
   const style = document.createElement("style");
-  style.id = "calmfeed-fonts";
+  style.id = "calmfeed-styles";
+  style.setAttribute("data-calmfeed", "0.5.5");
+  style.textContent = getCalmFeedStyles();
+  (document.documentElement || document.head).append(style);
+  stylesInjected = true;
+}
 
+function getCalmFeedStyles() {
   const fraunces600 = chrome.runtime.getURL("fonts/fraunces-600.woff2");
   const fraunces700 = chrome.runtime.getURL("fonts/fraunces-700.woff2");
   const bricolage400 = chrome.runtime.getURL("fonts/bricolage-grotesque-400.woff2");
@@ -113,53 +118,114 @@ function injectFonts() {
   const bricolage600 = chrome.runtime.getURL("fonts/bricolage-grotesque-600.woff2");
   const bricolage700 = chrome.runtime.getURL("fonts/bricolage-grotesque-700.woff2");
 
-  style.textContent = `
-    @font-face {
-      font-family: "Fraunces";
-      src: url("${fraunces600}") format("woff2");
-      font-weight: 600;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "Fraunces";
-      src: url("${fraunces700}") format("woff2");
-      font-weight: 700;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "Bricolage Grotesque";
-      src: url("${bricolage400}") format("woff2");
-      font-weight: 400;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "Bricolage Grotesque";
-      src: url("${bricolage500}") format("woff2");
-      font-weight: 500;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "Bricolage Grotesque";
-      src: url("${bricolage600}") format("woff2");
-      font-weight: 600;
-      font-style: normal;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "Bricolage Grotesque";
-      src: url("${bricolage700}") format("woff2");
-      font-weight: 700;
-      font-style: normal;
-      font-display: swap;
-    }
-  `;
+  return `
+@font-face{font-family:"Fraunces";src:url("${fraunces600}") format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Fraunces";src:url("${fraunces700}") format("woff2");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Bricolage Grotesque";src:url("${bricolage400}") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Bricolage Grotesque";src:url("${bricolage500}") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Bricolage Grotesque";src:url("${bricolage600}") format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Bricolage Grotesque";src:url("${bricolage700}") format("woff2");font-weight:700;font-style:normal;font-display:swap}
 
-  (document.head || document.documentElement).append(style);
-  fontsInjected = true;
+html.calm-x-booting article[data-testid="tweet"]{visibility:hidden!important}
+
+article[data-testid="tweet"][data-calm-x-state="pending"],
+article[data-testid="tweet"][data-calm-x-state="hidden"]{
+  display:block!important;position:relative!important;overflow:hidden!important;
+  min-height:0!important;height:auto!important;padding:0!important;margin:0!important;
+  border:none!important;background:transparent!important
+}
+
+article[data-testid="tweet"][data-calm-x-state="pending"]>:not(.calm-x-card),
+article[data-testid="tweet"][data-calm-x-state="hidden"]>:not(.calm-x-card){
+  display:none!important;visibility:hidden!important;pointer-events:none!important;
+  height:0!important;max-height:0!important;overflow:hidden!important;
+  margin:0!important;padding:0!important;border:none!important
+}
+
+.calm-x-card{
+  box-sizing:border-box!important;display:flex!important;align-items:center!important;
+  justify-content:space-between!important;gap:14px!important;width:100%!important;
+  min-height:92px!important;margin:0!important;padding:16px!important;
+  border:none!important;border-bottom:1px solid #e4e3e0!important;border-radius:0!important;
+  color:#141413!important;background:#f3f2f0!important;
+  font-family:"Bricolage Grotesque",system-ui,-apple-system,sans-serif!important;
+  cursor:default!important;-webkit-font-smoothing:antialiased!important
+}
+.calm-x-card-mark{
+  box-sizing:border-box!important;display:flex!important;align-items:center!important;
+  justify-content:center!important;flex-shrink:0!important;width:36px!important;height:36px!important;
+  border-radius:10px!important;background:#141413!important;color:#fafafa!important;
+  font-family:"Fraunces",Georgia,serif!important;font-size:15px!important;font-weight:600!important;
+  letter-spacing:-.03em!important;line-height:1!important
+}
+.calm-x-card[data-state="pending"] .calm-x-card-mark{
+  background:#73736e!important;animation:calm-x-pulse 1.2s ease-in-out infinite!important
+}
+.calm-x-card-copy{display:grid!important;gap:2px!important;min-width:0!important;flex:1 1 auto!important}
+.calm-x-card-kicker{
+  display:block!important;color:#73736e!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  font-size:11px!important;font-weight:600!important;letter-spacing:.08em!important;
+  text-transform:uppercase!important;line-height:1.2!important
+}
+.calm-x-card-title{
+  display:block!important;color:#141413!important;
+  font-family:"Fraunces",Georgia,serif!important;font-size:17px!important;font-weight:600!important;
+  letter-spacing:-.03em!important;line-height:1.15!important
+}
+.calm-x-card-note{
+  display:block!important;color:#73736e!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  font-size:13px!important;font-weight:400!important;letter-spacing:-.01em!important;line-height:1.35!important
+}
+.calm-x-card button{
+  box-sizing:border-box!important;flex-shrink:0!important;display:inline-flex!important;
+  align-items:center!important;justify-content:center!important;min-height:36px!important;
+  margin:0!important;padding:8px 14px!important;border:1px solid #141413!important;
+  border-radius:10px!important;color:#141413!important;background:#fafafa!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;font-size:13px!important;
+  font-weight:600!important;letter-spacing:-.01em!important;line-height:1!important;cursor:pointer!important
+}
+.calm-x-card button:hover{background:#eeedeb!important}
+.calm-x-timer{
+  box-sizing:border-box!important;position:fixed!important;right:18px!important;bottom:18px!important;
+  z-index:2147483646!important;min-width:64px!important;padding:11px 13px!important;
+  border:1px solid #e4e3e0!important;border-radius:12px!important;color:#141413!important;
+  background:#fafafa!important;font-family:"Bricolage Grotesque",system-ui,sans-serif!important;
+  font-size:14px!important;font-weight:600!important;letter-spacing:-.02em!important;
+  line-height:1!important;text-align:center!important;box-shadow:0 10px 30px rgba(20,20,19,.1)!important;
+  pointer-events:none!important
+}
+.calm-x-overlay{
+  box-sizing:border-box!important;position:fixed!important;inset:0!important;z-index:2147483647!important;
+  display:grid!important;place-items:center!important;padding:24px!important;background:#f3f2f0!important;
+  color:#141413!important;font-family:"Bricolage Grotesque",system-ui,sans-serif!important
+}
+.calm-x-end-panel{
+  box-sizing:border-box!important;width:min(460px,100%)!important;border-radius:18px!important;
+  border:1px solid #e4e3e0!important;padding:32px 28px!important;background:#fafafa!important;
+  box-shadow:0 20px 50px rgba(20,20,19,.08)!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important
+}
+.calm-x-eyebrow{
+  display:block!important;margin:0 0 22px!important;font-family:"Fraunces",Georgia,serif!important;
+  font-size:20px!important;font-weight:600!important;letter-spacing:-.03em!important;line-height:1!important;color:#141413!important
+}
+.calm-x-end-panel h1{
+  display:block!important;margin:0 0 12px!important;padding:0!important;border:none!important;
+  font-family:"Fraunces",Georgia,serif!important;font-size:clamp(36px,7vw,54px)!important;
+  font-weight:600!important;line-height:1.02!important;letter-spacing:-.04em!important;color:#141413!important
+}
+.calm-x-end-panel p{
+  display:block!important;max-width:400px!important;margin:0!important;padding:0!important;color:#73736e!important;
+  font-family:"Bricolage Grotesque",system-ui,sans-serif!important;font-size:15.5px!important;
+  font-weight:400!important;line-height:1.5!important;letter-spacing:-.01em!important
+}
+@keyframes calm-x-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){
+  .calm-x-card[data-state="pending"] .calm-x-card-mark{animation:none!important}
+}
+`;
 }
 
 function scan(root) {
@@ -462,30 +528,102 @@ function mountCard(article, options) {
 }
 
 function createCard({ state, title, note, buttonLabel, onClick }) {
+  // Inline styles as a hard fallback so X CSS / stale content.css cannot hide updates.
   const card = document.createElement("div");
   card.className = CARD_CLASS;
   card.dataset.state = state || "pending";
+  card.dataset.calmfeedVersion = "0.5.5";
   card.setAttribute("role", "status");
+  Object.assign(card.style, {
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "14px",
+    width: "100%",
+    minHeight: "92px",
+    margin: "0",
+    padding: "16px",
+    border: "none",
+    borderBottom: "1px solid #e4e3e0",
+    borderRadius: "0",
+    color: "#141413",
+    background: "#f3f2f0",
+    fontFamily: '"Bricolage Grotesque", system-ui, -apple-system, sans-serif',
+    cursor: "default",
+    WebkitFontSmoothing: "antialiased"
+  });
 
   const mark = document.createElement("div");
   mark.className = "calm-x-card-mark";
   mark.setAttribute("aria-hidden", "true");
   mark.textContent = "C";
+  Object.assign(mark.style, {
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: "0",
+    width: "36px",
+    height: "36px",
+    borderRadius: "10px",
+    background: state === "pending" ? "#73736e" : "#141413",
+    color: "#fafafa",
+    fontFamily: '"Fraunces", Georgia, serif',
+    fontSize: "15px",
+    fontWeight: "600",
+    letterSpacing: "-0.03em",
+    lineHeight: "1"
+  });
 
   const copy = document.createElement("div");
   copy.className = "calm-x-card-copy";
+  Object.assign(copy.style, {
+    display: "grid",
+    gap: "2px",
+    minWidth: "0",
+    flex: "1 1 auto"
+  });
 
   const kicker = document.createElement("span");
   kicker.className = "calm-x-card-kicker";
   kicker.textContent = "CalmFeed";
+  Object.assign(kicker.style, {
+    display: "block",
+    color: "#73736e",
+    fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
+    fontSize: "11px",
+    fontWeight: "600",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    lineHeight: "1.2"
+  });
 
   const heading = document.createElement("strong");
   heading.className = "calm-x-card-title";
   heading.textContent = title;
+  Object.assign(heading.style, {
+    display: "block",
+    color: "#141413",
+    fontFamily: '"Fraunces", Georgia, serif',
+    fontSize: "17px",
+    fontWeight: "600",
+    letterSpacing: "-0.03em",
+    lineHeight: "1.15"
+  });
 
   const description = document.createElement("span");
   description.className = "calm-x-card-note";
   description.textContent = note;
+  Object.assign(description.style, {
+    display: "block",
+    color: "#73736e",
+    fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
+    fontSize: "13px",
+    fontWeight: "400",
+    letterSpacing: "-0.01em",
+    lineHeight: "1.35"
+  });
 
   copy.append(kicker, heading, description);
   card.append(mark, copy);
@@ -494,6 +632,26 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = buttonLabel;
+    Object.assign(button.style, {
+      boxSizing: "border-box",
+      flexShrink: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "36px",
+      margin: "0",
+      padding: "8px 14px",
+      border: "1px solid #141413",
+      borderRadius: "10px",
+      color: "#141413",
+      background: "#fafafa",
+      fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
+      fontSize: "13px",
+      fontWeight: "600",
+      letterSpacing: "-0.01em",
+      lineHeight: "1",
+      cursor: "pointer"
+    });
     button.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
@@ -502,7 +660,6 @@ function createCard({ state, title, note, buttonLabel, onClick }) {
     card.append(button);
   }
 
-  // Keep feed clicks from opening the underlying tweet while hidden.
   card.addEventListener("click", event => {
     if (event.target.closest("button")) return;
     event.preventDefault();

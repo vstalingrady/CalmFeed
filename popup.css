@@ -442,6 +442,13 @@ button:active:not(:disabled) {
   text-align: center;
 }
 
+.fine-print .version {
+  display: block;
+  margin-top: 4px;
+  color: #a1a09a;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   button,
   .help-link,
