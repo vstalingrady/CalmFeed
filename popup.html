@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CalmFeed for X</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <span class="eyebrow">CALMFEED FOR X</span>
+      <h1>Use X.<br>Then leave.</h1>
+    </header>
+
+    <label for="apiKey">Gemini API key</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="AIza..." spellcheck="false">
+
+    <div class="row">
+      <div>
+        <label for="minutes">Minutes</label>
+        <input id="minutes" type="number" min="1" max="120" value="10">
+      </div>
+
+      <div>
+        <label for="sensitivity">Filter</label>
+        <select id="sensitivity">
+          <option value="gentle">Gentle</option>
+          <option value="balanced">Balanced</option>
+          <option value="strict">Strict</option>
+        </select>
+      </div>
+    </div>
+
+    <p id="status" role="status"></p>
+
+    <div class="actions">
+      <button id="save" class="secondary" type="button">Save</button>
+      <button id="start" class="primary" type="button">Start session</button>
+    </div>
+
+    <p class="fine-print">Your key stays in this browser. Post text and tweet images go directly to Gemini for embeddings. No CalmFeed servers.</p>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

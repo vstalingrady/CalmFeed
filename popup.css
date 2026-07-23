@@ -1,0 +1,129 @@
+:root {
+  color-scheme: light;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  color: #1c1b19;
+  background: #f3f0e8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 332px;
+  margin: 0;
+  background: #f3f0e8;
+}
+
+main {
+  padding: 22px;
+}
+
+header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #c9c2b4;
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 26px;
+  color: #6d675d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 38px;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  color: #514d46;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid #aaa294;
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #1c1b19;
+  background: #fbf9f3;
+  font: 16px/1.2 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: #1c1b19;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+#status {
+  min-height: 18px;
+  margin: 14px 0 10px;
+  color: #8d3028;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#status.ok {
+  color: #3f5d43;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 10px;
+}
+
+button {
+  min-height: 41px;
+  border-radius: 7px;
+  padding: 9px 12px;
+  font: 700 15px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.secondary {
+  border: 1px solid #1c1b19;
+  color: #1c1b19;
+  background: transparent;
+}
+
+.primary {
+  border: 1px solid #1c1b19;
+  color: #f8f5ed;
+  background: #1c1b19;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.fine-print {
+  margin: 16px 0 0;
+  color: #716b61;
+  font-size: 11px;
+  line-height: 1.4;
+}

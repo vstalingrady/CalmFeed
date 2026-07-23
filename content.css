@@ -1,0 +1,113 @@
+html.calm-x-booting article[data-testid="tweet"] {
+  visibility: hidden;
+}
+
+article[data-testid="tweet"][data-calm-x-state="pending"] > :not(.calm-x-card),
+article[data-testid="tweet"][data-calm-x-state="hidden"] > :not(.calm-x-card) {
+  display: none !important;
+}
+
+.calm-x-card {
+  box-sizing: border-box;
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgb(207, 217, 222);
+  color: rgb(15, 20, 25);
+  background: rgb(247, 245, 239);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+article[data-calm-x-state="pending"] .calm-x-card {
+  color: rgb(75, 70, 62);
+}
+
+.calm-x-card-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.calm-x-card-copy strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.calm-x-card-copy span {
+  font-size: 14px;
+  color: rgb(83, 78, 69);
+}
+
+.calm-x-card button {
+  appearance: none;
+  border: 1px solid rgb(56, 52, 47);
+  border-radius: 7px;
+  padding: 7px 12px;
+  color: rgb(28, 27, 25);
+  background: transparent;
+  font: 700 14px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  cursor: pointer;
+}
+
+.calm-x-card button:hover {
+  background: rgb(232, 228, 218);
+}
+
+.calm-x-timer {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483646;
+  min-width: 58px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid rgb(56, 52, 47);
+  border-radius: 7px;
+  color: rgb(28, 27, 25);
+  background: rgb(247, 245, 239);
+  font: 700 15px/1 "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  text-align: center;
+}
+
+.calm-x-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(235, 231, 221);
+  color: rgb(28, 27, 25);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+.calm-x-end-panel {
+  width: min(470px, 100%);
+  border-top: 2px solid rgb(28, 27, 25);
+  padding-top: 20px;
+}
+
+.calm-x-eyebrow {
+  display: block;
+  margin-bottom: 34px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.calm-x-end-panel h1 {
+  margin: 0 0 12px;
+  font-size: clamp(38px, 8vw, 64px);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.calm-x-end-panel p {
+  max-width: 430px;
+  margin: 0;
+  color: rgb(83, 78, 69);
+  font-size: 18px;
+  line-height: 1.45;
+}
